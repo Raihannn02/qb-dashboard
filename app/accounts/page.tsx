@@ -133,7 +133,7 @@ export default function AccountsPage() {
         </div>
 
         {/* Search */}
-        <div className="card p-4 mb-6 flex gap-4 items-center">
+        <div className="filter-card">
           <div className="search-bar flex-1">
             <Search size={15} className="text-[var(--text-muted)]" />
             <input

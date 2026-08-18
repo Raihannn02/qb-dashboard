@@ -81,7 +81,7 @@ export default function Topbar({ collapsed }: TopbarProps) {
         <div className="flex items-center gap-2 text-xs">
           <span className="text-[var(--text-muted)] font-medium">{pathInfo.parent}</span>
           <ChevronRight size={14} className="text-[var(--text-muted)]" />
-          <span className="text-[var(--text-primary)] font-semibold">{pathInfo.title}</span>
+          <span className="text-[var(--text-primary)] font-bold">{pathInfo.title}</span>
         </div>
 
         <div className="flex-1" />
@@ -89,11 +89,11 @@ export default function Topbar({ collapsed }: TopbarProps) {
         {/* Global Search Button Trigger */}
         <button
           onClick={() => setIsSearchOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border)] text-xs text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] transition-all"
+          className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-xs text-[var(--text-muted)] hover:border-[var(--accent)] hover:text-[var(--text-primary)] transition-all shadow-sm group"
         >
-          <Search size={14} />
-          <span>Search...</span>
-          <kbd className="px-1.5 py-0.5 rounded bg-[var(--bg-secondary)] border border-[var(--border)] text-[10px] text-[var(--text-secondary)] font-mono ml-2">
+          <Search size={14} className="group-hover:text-[var(--accent)] transition-colors" />
+          <span className="font-medium">Search...</span>
+          <kbd className="px-1.5 py-0.5 rounded bg-[var(--bg-secondary)] border border-[var(--border-subtle)] text-[10px] text-[var(--text-secondary)] font-mono ml-1.5">
             Ctrl + K
           </kbd>
         </button>
@@ -102,7 +102,7 @@ export default function Topbar({ collapsed }: TopbarProps) {
         <div className="relative">
           <button
             onClick={() => setIsNotifOpen(!isNotifOpen)}
-            className="w-9 h-9 rounded-lg bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-white flex items-center justify-center relative transition-colors"
+            className="w-9 h-9 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-white flex items-center justify-center relative transition-colors shadow-sm"
           >
             <Bell size={16} />
             {unreadCount > 0 && (
@@ -113,13 +113,13 @@ export default function Topbar({ collapsed }: TopbarProps) {
           </button>
 
           {isNotifOpen && (
-            <div className="absolute right-0 mt-2 w-80 rounded-xl bg-[var(--bg-card)] border border-[var(--border-subtle)] shadow-2xl z-50 overflow-hidden">
+            <div className="absolute right-0 mt-2 w-80 rounded-xl bg-[var(--bg-card)] border border-[var(--border-subtle)] shadow-2xl z-50 overflow-hidden animate-scaleUp">
               <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)] bg-[var(--bg-secondary)]">
                 <span className="text-xs font-bold text-[var(--text-primary)]">Notifications</span>
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllRead}
-                    className="text-[11px] text-[var(--accent)] hover:underline flex items-center gap-1"
+                    className="text-[11px] text-[var(--accent)] hover:underline flex items-center gap-1 font-semibold"
                   >
                     <Check size={12} /> Mark all read
                   </button>
@@ -151,18 +151,18 @@ export default function Topbar({ collapsed }: TopbarProps) {
         </div>
 
         {/* Theme Indicator */}
-        <div className="w-9 h-9 rounded-lg bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-muted)] flex items-center justify-center">
+        <div className="w-9 h-9 rounded-xl bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-muted)] flex items-center justify-center shadow-sm">
           <Moon size={16} />
         </div>
 
         {/* User Profile */}
-        <div className="flex items-center gap-2 pl-2 border-l border-[var(--border)]">
-          <div className="w-8 h-8 rounded-lg bg-indigo-600/20 border border-indigo-500/30 text-indigo-400 font-bold text-xs flex items-center justify-center">
+        <div className="flex items-center gap-2.5 pl-3 border-l border-[var(--border)]">
+          <div className="w-8 h-8 rounded-xl bg-[var(--accent-light)] border border-[var(--accent-glow)] text-[var(--accent)] font-bold text-xs flex items-center justify-center shadow-sm">
             A
           </div>
           <div className="flex flex-col text-xs hidden sm:flex">
-            <span className="font-semibold text-[var(--text-primary)] leading-tight">Admin</span>
-            <span className="text-[10px] text-[var(--text-muted)]">Owner</span>
+            <span className="font-bold text-[var(--text-primary)] leading-tight">Admin</span>
+            <span className="text-[10px] text-[var(--text-muted)] font-medium">Owner</span>
           </div>
         </div>
       </header>

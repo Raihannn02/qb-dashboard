@@ -207,8 +207,8 @@ export default function TransactionsPage() {
         </div>
 
         {/* Filter Controls */}
-        <div className="card p-4 mb-6 flex gap-4 flex-wrap items-center">
-          <div className="search-bar flex-1 min-w-[240px]">
+        <div className="filter-card">
+          <div className="search-bar flex-1 min-w-[260px]">
             <Search size={15} className="text-[var(--text-muted)]" />
             <input
               placeholder="Search code, buyer, product..."
@@ -225,7 +225,7 @@ export default function TransactionsPage() {
           <select
             value={status}
             onChange={e => { setStatus(e.target.value); setPage(1); }}
-            className="input w-auto h-9 text-xs"
+            className="filter-select"
           >
             <option value="">All Statuses</option>
             {STATUSES.map(s => <option key={s}>{s}</option>)}
@@ -234,7 +234,7 @@ export default function TransactionsPage() {
           <select
             value={platform}
             onChange={e => { setPlatform(e.target.value); setPage(1); }}
-            className="input w-auto h-9 text-xs"
+            className="filter-select"
           >
             <option value="">All Platforms</option>
             {PLATFORMS.map(p => <option key={p}>{p}</option>)}
@@ -320,14 +320,23 @@ export default function TransactionsPage() {
                         </div>
                       </td>
                       <td className="text-center">
-                        <ActionMenu
-                          items={[
-                            { label: 'View Order Drawer', icon: Eye, onClick: () => setSelectedDrawerTx(tx) },
-                            { label: 'Edit Order', icon: Edit2, onClick: () => openEdit(tx) },
-                            ...(tx.status !== 'Completed' ? [{ label: 'Mark Complete', icon: CheckCircle2, onClick: () => updateStatus(tx, 'Completed') }] : []),
-                            { label: 'Delete Transaction', icon: Trash2, variant: 'danger', onClick: () => setDeleteTarget(tx) },
-                          ]}
-                        />
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => openEdit(tx)}
+                            title="Edit Order"
+                            className="w-7 h-7 rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--accent)] flex items-center justify-center transition-all border border-[var(--border)]"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <ActionMenu
+                            items={[
+                              { label: 'View Order Drawer', icon: Eye, onClick: () => setSelectedDrawerTx(tx) },
+                              { label: 'Edit Order', icon: Edit2, onClick: () => openEdit(tx) },
+                              ...(tx.status !== 'Completed' ? [{ label: 'Mark Complete', icon: CheckCircle2, onClick: () => updateStatus(tx, 'Completed') }] : []),
+                              { label: 'Delete Transaction', icon: Trash2, variant: 'danger', onClick: () => setDeleteTarget(tx) },
+                            ]}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))

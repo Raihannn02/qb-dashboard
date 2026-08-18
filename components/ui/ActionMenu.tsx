@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { MoreHorizontal, Eye, Edit3, Trash2, Copy, Layers, Power, RefreshCw } from 'lucide-react';
+import { MoreHorizontal } from 'lucide-react';
 
 export interface ActionMenuItem {
   label: string;
@@ -13,9 +13,10 @@ export interface ActionMenuItem {
 
 interface ActionMenuProps {
   items: ActionMenuItem[];
+  label?: string;
 }
 
-export default function ActionMenu({ items }: ActionMenuProps) {
+export default function ActionMenu({ items, label }: ActionMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -33,14 +34,18 @@ export default function ActionMenu({ items }: ActionMenuProps) {
     <div className="relative inline-block text-left" ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-8 h-8 rounded-lg bg-transparent hover:bg-[var(--bg-card-hover)] text-[var(--text-secondary)] hover:text-white flex items-center justify-center transition-colors"
-        title="More Actions"
+        className="action-menu-btn"
+        title="Actions"
       >
-        <MoreHorizontal size={16} />
+        {label ? (
+          <span className="text-xs font-semibold">{label}</span>
+        ) : (
+          <MoreHorizontal size={15} />
+        )}
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-1 w-48 rounded-xl bg-[var(--bg-card)] border border-[var(--border-subtle)] shadow-2xl z-50 py-1.5 animation-fadeIn">
+        <div className="absolute right-0 mt-1.5 w-48 rounded-xl bg-[var(--bg-card)] border border-[var(--border-subtle)] shadow-2xl z-50 py-1.5 backdrop-blur-md animate-scaleUp">
           {items.map((item, index) => {
             const isDanger = item.variant === 'danger';
             const isWarning = item.variant === 'warning';
@@ -48,21 +53,22 @@ export default function ActionMenu({ items }: ActionMenuProps) {
               <button
                 key={index}
                 disabled={item.disabled}
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
                   setIsOpen(false);
                   item.onClick();
                 }}
-                className={`w-full text-left px-3.5 py-2 text-xs font-medium flex items-center gap-2.5 transition-colors ${
+                className={`w-full text-left px-3.5 py-2.5 text-xs font-semibold flex items-center gap-2.5 transition-all ${
                   item.disabled
                     ? 'opacity-40 cursor-not-allowed'
                     : isDanger
                     ? 'text-[var(--danger)] hover:bg-[var(--danger-bg)]'
                     : isWarning
                     ? 'text-[var(--warning)] hover:bg-[var(--warning-bg)]'
-                    : 'text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)]'
+                    : 'text-[var(--text-primary)] hover:bg-[var(--accent-light)] hover:text-[var(--accent)]'
                 }`}
               >
-                {item.icon && <item.icon size={14} className="shrink-0" />}
+                {item.icon && <item.icon size={15} className="shrink-0" />}
                 <span>{item.label}</span>
               </button>
             );

@@ -137,8 +137,8 @@ export default function InventoryPage() {
         </div>
 
         {/* Filters */}
-        <div className="card p-4 mb-6 flex gap-4 flex-wrap items-center">
-          <div className="search-bar flex-1 min-w-[240px]">
+        <div className="filter-card">
+          <div className="search-bar flex-1 min-w-[260px]">
             <Search size={15} className="text-[var(--text-muted)]" />
             <input
               placeholder="Search product code or name..."
@@ -155,7 +155,7 @@ export default function InventoryPage() {
           <select
             value={category}
             onChange={e => { setCategory(e.target.value); setPage(1); }}
-            className="input w-auto h-9 text-xs"
+            className="filter-select"
           >
             <option value="">All Categories</option>
             {CATEGORIES.map(c => <option key={c}>{c}</option>)}
@@ -164,7 +164,7 @@ export default function InventoryPage() {
           <select
             value={stockStatus}
             onChange={e => { setStockStatus(e.target.value); setPage(1); }}
-            className="input w-auto h-9 text-xs"
+            className="filter-select"
           >
             <option value="">All Stock Status</option>
             {STOCK_STATUSES.map(s => <option key={s}>{s}</option>)}
@@ -223,23 +223,35 @@ export default function InventoryPage() {
                       <td className="text-right font-semibold text-[var(--success)]">{formatCurrency(item.stock_value)}</td>
                       <td><span className={stockBadge(item.stock_status)}>{item.stock_status}</span></td>
                       <td className="text-center">
-                        <ActionMenu
-                          items={[
-                            {
-                              label: 'Adjust Stock',
-                              icon: ArrowUpDown,
-                              onClick: () => {
-                                setShowAdjust(item);
-                                setAdjustForm({ type: 'Stock In', quantity: '', notes: '' });
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setShowAdjust(item);
+                              setAdjustForm({ type: 'Stock In', quantity: '', notes: '' });
+                            }}
+                            title="Adjust Stock"
+                            className="w-7 h-7 rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--accent)] flex items-center justify-center transition-all border border-[var(--border)]"
+                          >
+                            <ArrowUpDown size={13} />
+                          </button>
+                          <ActionMenu
+                            items={[
+                              {
+                                label: 'Adjust Stock',
+                                icon: ArrowUpDown,
+                                onClick: () => {
+                                  setShowAdjust(item);
+                                  setAdjustForm({ type: 'Stock In', quantity: '', notes: '' });
+                                }
+                              },
+                              {
+                                label: 'Movement Logs',
+                                icon: History,
+                                onClick: () => { window.location.href = `/stock-movements?product_id=${item.id}`; }
                               }
-                            },
-                            {
-                              label: 'Movement Logs',
-                              icon: History,
-                              onClick: () => { window.location.href = `/stock-movements?product_id=${item.id}`; }
-                            }
-                          ]}
-                        />
+                            ]}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))

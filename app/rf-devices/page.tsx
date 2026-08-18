@@ -6,7 +6,7 @@ import ActionMenu from '@/components/ui/ActionMenu';
 import DeleteModal from '@/components/ui/DeleteModal';
 import EmptyState from '@/components/ui/EmptyState';
 import { formatCurrency } from '@/lib/utils';
-import { Monitor, Edit2, Plus, X, Check, Wifi, WifiOff, Wrench, Smartphone, Users, Trash2 } from 'lucide-react';
+import { Monitor, Edit2, Plus, X, Check, Wifi, WifiOff, Wrench, Smartphone, Users, Trash2, Search } from 'lucide-react';
 
 const RF_STATUS_COLOR: Record<string, string> = {
   Active: 'var(--success)', Offline: 'var(--danger)', Maintenance: 'var(--warning)'
@@ -14,6 +14,7 @@ const RF_STATUS_COLOR: Record<string, string> = {
 
 export default function RFDevicesPage() {
   const [rfDevices, setRfDevices] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
   const [totalCost, setTotalCost] = useState(0);
   const [loading, setLoading] = useState(true);
   const [editDevice, setEditDevice] = useState<any>(null);
@@ -90,6 +91,11 @@ export default function RFDevicesPage() {
   const totalAccounts = rfDevices.reduce((s, r) => s + (r.account_count || 0), 0);
   const activeDevices = rfDevices.filter(r => r.status === 'Active').length;
 
+  const filteredDevices = rfDevices.filter(rf =>
+    rf.name?.toLowerCase().includes(search.toLowerCase()) ||
+    String(rf.device_number || '').includes(search)
+  );
+
   return (
     <DashboardLayout>
       <div className="page-content space-y-6">
@@ -144,6 +150,23 @@ export default function RFDevicesPage() {
           </div>
         </div>
 
+        {/* Search Filter Card */}
+        <div className="filter-card">
+          <div className="search-bar flex-1">
+            <Search size={15} className="text-[var(--text-muted)]" />
+            <input
+              placeholder="Search by RedFinger device name or number..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="text-[var(--text-muted)] hover:text-white">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Device Cards Grid */}
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -151,7 +174,7 @@ export default function RFDevicesPage() {
               <div key={i} className="skeleton h-44 w-full" />
             ))}
           </div>
-        ) : rfDevices.length === 0 ? (
+        ) : filteredDevices.length === 0 ? (
           <EmptyState
             icon={Smartphone}
             title="No RedFinger Devices"
@@ -161,7 +184,7 @@ export default function RFDevicesPage() {
           />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {rfDevices.map(rf => (
+            {filteredDevices.map(rf => (
               <div
                 key={rf.id}
                 className="card p-4 relative overflow-hidden flex flex-col justify-between hover:border-[var(--accent)] transition-all"

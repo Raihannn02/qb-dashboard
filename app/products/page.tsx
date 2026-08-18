@@ -208,8 +208,8 @@ export default function ProductsPage() {
         </div>
 
         {/* Filter Controls */}
-        <div className="card p-4 mb-6 flex gap-4 flex-wrap items-center">
-          <div className="search-bar flex-1 min-w-[240px]">
+        <div className="filter-card">
+          <div className="search-bar flex-1 min-w-[260px]">
             <Search size={15} className="text-[var(--text-muted)]" />
             <input
               placeholder="Search products by code or name... (Ctrl + K)"
@@ -226,7 +226,7 @@ export default function ProductsPage() {
           <select
             value={category}
             onChange={e => { setCategory(e.target.value); setPage(1); }}
-            className="input w-auto h-9 text-xs"
+            className="filter-select"
           >
             <option value="">All Categories</option>
             {CATEGORIES.map(c => <option key={c}>{c}</option>)}
@@ -235,7 +235,7 @@ export default function ProductsPage() {
           <select
             value={status}
             onChange={e => { setStatus(e.target.value); setPage(1); }}
-            className="input w-auto h-9 text-xs"
+            className="filter-select"
           >
             <option value="">All Statuses</option>
             {STATUSES.map(s => <option key={s}>{s}</option>)}
@@ -310,14 +310,23 @@ export default function ProductsPage() {
                       <td className="text-right font-bold text-[var(--success)]">{formatCurrency(p.total_profit || 0)}</td>
                       <td className="text-right text-[var(--text-muted)]">{formatPercent(margin)}</td>
                       <td className="text-center">
-                        <ActionMenu
-                          items={[
-                            { label: 'View Details', icon: Eye, onClick: () => setSelectedDrawerProduct(p) },
-                            { label: 'Edit Product', icon: Edit2, onClick: () => openEdit(p) },
-                            { label: 'Duplicate', icon: Copy, onClick: () => openDuplicate(p) },
-                            { label: 'Delete Product', icon: Trash2, variant: 'danger', onClick: () => setDeleteTarget(p) },
-                          ]}
-                        />
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => openEdit(p)}
+                            title="Edit Product"
+                            className="w-7 h-7 rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--accent)] flex items-center justify-center transition-all border border-[var(--border)]"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <ActionMenu
+                            items={[
+                              { label: 'View Details', icon: Eye, onClick: () => setSelectedDrawerProduct(p) },
+                              { label: 'Edit Product', icon: Edit2, onClick: () => openEdit(p) },
+                              { label: 'Duplicate', icon: Copy, onClick: () => openDuplicate(p) },
+                              { label: 'Delete Product', icon: Trash2, variant: 'danger', onClick: () => setDeleteTarget(p) },
+                            ]}
+                          />
+                        </div>
                       </td>
                     </tr>
                   );

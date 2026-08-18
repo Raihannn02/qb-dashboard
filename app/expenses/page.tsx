@@ -122,24 +122,24 @@ export default function ExpensesPage() {
         </div>
 
         {/* Filters */}
-        <div className="card p-4 mb-6 flex gap-4 flex-wrap items-center">
+        <div className="filter-card">
           <select
             value={category}
             onChange={e => { setCategory(e.target.value); setPage(1); }}
-            className="input w-auto h-9 text-xs"
+            className="filter-select"
           >
             <option value="">All Categories</option>
             {CATEGORIES.map(c => <option key={c}>{c}</option>)}
           </select>
           <input
             type="date"
-            className="input w-auto h-9 text-xs"
+            className="filter-select"
             value={dateFrom}
             onChange={e => { setDateFrom(e.target.value); setPage(1); }}
           />
           <input
             type="date"
-            className="input w-auto h-9 text-xs"
+            className="filter-select"
             value={dateTo}
             onChange={e => { setDateTo(e.target.value); setPage(1); }}
           />
@@ -189,12 +189,21 @@ export default function ExpensesPage() {
                       <td className="text-right font-bold text-[var(--danger)]">{formatCurrency(e.amount)}</td>
                       <td className="text-xs text-[var(--text-muted)] max-w-xs truncate">{e.notes || '-'}</td>
                       <td className="text-center">
-                        <ActionMenu
-                          items={[
-                            { label: 'Edit Record', icon: Edit2, onClick: () => openEdit(e) },
-                            { label: 'Delete Expense', icon: Trash2, variant: 'danger', onClick: () => setDeleteTarget(e) },
-                          ]}
-                        />
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => openEdit(e)}
+                            title="Edit Record"
+                            className="w-7 h-7 rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--accent)] flex items-center justify-center transition-all border border-[var(--border)]"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+                          <ActionMenu
+                            items={[
+                              { label: 'Edit Record', icon: Edit2, onClick: () => openEdit(e) },
+                              { label: 'Delete Expense', icon: Trash2, variant: 'danger', onClick: () => setDeleteTarget(e) },
+                            ]}
+                          />
+                        </div>
                       </td>
                     </tr>
                   ))
