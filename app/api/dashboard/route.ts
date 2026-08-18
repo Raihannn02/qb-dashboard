@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     // Fetch all needed data in parallel
     const [prodRes, invRes, txQuery, expQuery] = await Promise.all([
       supabase.from('products').select('id', { count: 'exact', head: true }).eq('status', 'Active'),
-      supabase.from('inventory').select('current_stock, products(default_price)'),
+      supabase.from('inventory').select('current_stock, products!inner(default_price, status)').eq('products.status', 'Active'),
       (() => {
         let q = supabase.from('transactions').select('product_id, total, profit, total_hpp, quantity, status, created_at');
         if (start) q = q.gte('created_at', start);
@@ -42,8 +42,8 @@ export async function GET(request: NextRequest) {
     const totalExpenses = (expQuery.data || []).reduce((s, e: any) => s + parseFloat(e.amount || 0), 0);
     const netProfit = grossProfit - totalExpenses;
     const invData = (invRes.data || []) as any[];
-    const totalStock = invData.reduce((s, i) => s + (i.current_stock || 0), 0);
-    const stockValue = invData.reduce((s, i) => s + (i.current_stock || 0) * (i.products?.default_price || 0), 0);
+    const totalStock = invData.reduce((s, i) => s + Math.max(0, parseInt(i.current_stock || 0)), 0);
+    const stockValue = invData.reduce((s, i) => s + (Math.max(0, parseInt(i.current_stock || 0)) * (parseFloat(i.products?.default_price || 0))), 0);
 
     // Chart data — group by date
     const chartMap: Record<string, { revenue: number; profit: number }> = {};
