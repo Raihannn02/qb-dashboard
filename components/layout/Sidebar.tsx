@@ -142,16 +142,33 @@ export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
         ))}
       </div>
 
-      {/* System Footer Badge */}
-      {!collapsed && (
-        <div className="p-3 border-t border-[var(--border)] bg-[var(--bg-secondary)] m-2 rounded-xl flex items-center gap-2.5">
-          <ShieldCheck size={16} className="text-[var(--success)] shrink-0" />
-          <div className="flex flex-col text-xs">
-            <span className="font-medium text-[var(--text-primary)] text-[11px]">Supabase Cloud</span>
-            <span className="text-[10px] text-[var(--text-muted)]">Connected 24/7</span>
+      {/* Sidebar Bottom Footer: Admin User Status + Cloud Badge */}
+      <div className="p-2 border-t border-[var(--border)] space-y-2 shrink-0">
+        {/* Admin Profile Card */}
+        <div className={`p-2 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] flex items-center ${collapsed ? 'justify-center' : 'justify-between'} gap-2.5 transition-all`}>
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="relative shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-[var(--accent-light)] border border-[var(--accent-glow)] text-[var(--accent)] font-bold text-xs flex items-center justify-center shadow-sm">
+                A
+              </div>
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-[var(--success)] border-2 border-[var(--bg-secondary)]" />
+            </div>
+            {!collapsed && (
+              <div className="flex flex-col min-w-0">
+                <span className="font-bold text-xs text-[var(--text-primary)] truncate leading-tight">Admin</span>
+                <span className="text-[10px] text-[var(--text-muted)] font-medium">System Owner</span>
+              </div>
+            )}
           </div>
         </div>
-      )}
+
+        {!collapsed && (
+          <div className="px-3 py-1.5 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] flex items-center gap-2 text-[10px] text-[var(--text-muted)]">
+            <ShieldCheck size={14} className="text-[var(--success)] shrink-0" />
+            <span>Supabase Cloud Connected</span>
+          </div>
+        )}
+      </div>
     </aside>
   );
 }

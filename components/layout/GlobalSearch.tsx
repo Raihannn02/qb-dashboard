@@ -19,11 +19,6 @@ export default function GlobalSearch({ isOpen, onClose }: { isOpen: boolean; onC
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        if (isOpen) onClose();
-        else setQuery('');
-      }
       if (e.key === 'Escape' && isOpen) onClose();
     };
 
@@ -170,8 +165,8 @@ export default function GlobalSearch({ isOpen, onClose }: { isOpen: boolean; onC
 
         {/* Footer info */}
         <div className="px-4 py-2 bg-[var(--bg-secondary)] border-t border-[var(--border)] flex justify-between items-center text-[10px] text-[var(--text-muted)]">
-          <span>Navigate with mouse or keyboard</span>
-          <span>Shortcut: <kbd className="px-1.5 py-0.5 rounded bg-[var(--bg-card)] border border-[var(--border)] text-[10px]">Ctrl + K</kbd></span>
+          <span>Search Grow a Garden 2 database</span>
+          <span>Press ESC to close</span>
         </div>
       </div>
     </div>
