@@ -72,7 +72,7 @@ export default function DashboardPage() {
     <div className="stat-card">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs font-semibold text-[var(--text-secondary)]">{label}</span>
-        <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: `${color}18`, color }}>
+        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color}18`, color }}>
           <Icon size={16} />
         </div>
       </div>
@@ -94,13 +94,13 @@ export default function DashboardPage() {
     <DashboardLayout>
       <div className="page-content space-y-6">
         {/* Header Greeting & Date Filter */}
-        <div className="space-y-4">
+        <div className="mb-6 space-y-3">
           <div>
             <h1 className="page-title">Good afternoon, Admin</h1>
             <div className="page-subtitle">Here's what's happening with your Grow a Garden 2 business today.</div>
           </div>
 
-          <div className="pt-1">
+          <div className="pt-2">
             <SegmentedControl
               options={DATE_FILTERS}
               selectedValue={dateFilter}
@@ -112,7 +112,7 @@ export default function DashboardPage() {
         </div>
 
         {/* KPI Cards: Row 1 (4 Cards) */}
-        <div className="kpi-grid-4">
+        <div className="kpi-grid-4 mb-6">
           <StatCard icon={ShoppingCart} label="Revenue" value={formatCurrency(stats.total_revenue)} sub={`${stats.completed_transactions || 0} completed`} trend="+12.5%" color="#10b981" />
           <StatCard icon={TrendingUp} label="Net Profit" value={formatCurrency(stats.net_profit)} sub="After expenses" trend="+8.4%" color="#6366f1" />
           <StatCard icon={Boxes} label="Total Stock" value={formatNumber(stats.total_stock)} sub="Units in inventory" color="#3b82f6" />
@@ -120,20 +120,18 @@ export default function DashboardPage() {
         </div>
 
         {/* KPI Cards: Row 2 (2 Cards) */}
-        <div className="kpi-grid-2">
+        <div className="kpi-grid-2 mb-6">
           <StatCard icon={Package} label="Active Products" value={formatNumber(stats.total_products)} sub="In catalog" color="#8b5cf6" />
           <StatCard icon={DollarSign} label="Total HPP" value={formatCurrency(stats.total_hpp)} sub="Cost of goods" color="#ec4899" />
         </div>
 
-        {/* Revenue Chart + Inventory Alerts (70% / 30% ratio) */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Revenue Chart + Inventory Alerts */}
+        <div className="dashboard-grid-row split-70-30 mb-6">
           {/* Revenue Chart */}
-          <div className="card lg:col-span-2 p-5 flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-bold text-base text-[var(--text-primary)]">Revenue & Profit Overview</h3>
-                <p className="text-xs text-[var(--text-muted)]">Financial trajectory over selected timeframe</p>
-              </div>
+          <div className="card p-6 flex flex-col justify-between">
+            <div className="mb-4">
+              <h3 className="font-bold text-base text-[var(--text-primary)]">Revenue & Profit Overview</h3>
+              <p className="text-xs text-[var(--text-muted)]">Financial trajectory over selected timeframe</p>
             </div>
             {loading ? (
               <div className="skeleton h-60 w-full" />
@@ -172,7 +170,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Low Stock Alerts Widget (Max 5 items) */}
-          <div className="card p-5 flex flex-col justify-between">
+          <div className="card p-6 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
@@ -206,7 +204,7 @@ export default function DashboardPage() {
                 {visibleLowStock.map((item: any) => (
                   <div
                     key={item.product_code}
-                    className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-xs transition-colors hover:border-[var(--border-subtle)]"
+                    className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-xs transition-colors hover:border-[var(--border-subtle)]"
                   >
                     <div>
                       <div className="font-semibold text-[var(--text-primary)]">{item.name}</div>
@@ -223,9 +221,9 @@ export default function DashboardPage() {
         </div>
 
         {/* Top Products & Recent Transactions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="dashboard-grid-row two-col mb-6">
           {/* Top Products Widget */}
-          <div className="card p-5 flex flex-col justify-between">
+          <div className="card p-6 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-bold text-sm text-[var(--text-primary)]">Top Performing Products</h3>
@@ -260,7 +258,7 @@ export default function DashboardPage() {
                 {sortedTopProducts.filter((p: any) => p.total_sold > 0).map((p: any, i: number) => (
                   <div
                     key={p.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[var(--bg-secondary)] transition-colors border border-[var(--border)]"
+                    className="flex items-center justify-between p-3 rounded-xl hover:bg-[var(--bg-secondary)] transition-colors border border-[var(--border)]"
                   >
                     <div className="flex items-center gap-3">
                       <span className="font-bold text-xs text-[var(--text-muted)] w-5">0{i + 1}</span>
@@ -280,7 +278,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Recent Sales Activity Widget */}
-          <div className="card p-5 flex flex-col justify-between">
+          <div className="card p-6 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="font-bold text-sm text-[var(--text-primary)]">Recent Sales Activity</h3>
@@ -309,7 +307,7 @@ export default function DashboardPage() {
                 {recentTx.slice(0, 5).map((tx: any) => (
                   <div
                     key={tx.id}
-                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-[var(--bg-secondary)] transition-colors border border-[var(--border)]"
+                    className="flex items-center justify-between p-3 rounded-xl hover:bg-[var(--bg-secondary)] transition-colors border border-[var(--border)]"
                   >
                     <div>
                       <div className="font-semibold text-xs text-[var(--text-primary)]">{tx.tx_number} • {tx.buyer_name || 'Customer'}</div>

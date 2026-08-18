@@ -122,7 +122,7 @@ export default function ExpensesPage() {
         </div>
 
         {/* Filters */}
-        <div className="card p-3 flex gap-3 flex-wrap items-center">
+        <div className="card p-4 mb-6 flex gap-4 flex-wrap items-center">
           <select
             value={category}
             onChange={e => { setCategory(e.target.value); setPage(1); }}

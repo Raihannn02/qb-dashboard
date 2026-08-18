@@ -208,7 +208,7 @@ export default function ProductsPage() {
         </div>
 
         {/* Filter Controls */}
-        <div className="card p-3 flex gap-3 flex-wrap items-center">
+        <div className="card p-4 mb-6 flex gap-4 flex-wrap items-center">
           <div className="search-bar flex-1 min-w-[240px]">
             <Search size={15} className="text-[var(--text-muted)]" />
             <input

@@ -24,21 +24,21 @@ export default function EmptyState({
   compact = false,
 }: EmptyStateProps) {
   return (
-    <div className={`flex flex-col items-center justify-center text-center ${compact ? 'py-6 px-4' : 'py-12 px-6'} rounded-xl border border-dashed border-[var(--border)] bg-[var(--bg-secondary)]/50`}>
-      <div className="w-12 h-12 rounded-2xl bg-[var(--bg-card)] border border-[var(--border)] text-[var(--text-muted)] flex items-center justify-center mb-3 shadow-sm">
+    <div className={`empty-state-wrapper ${compact ? 'compact' : ''}`}>
+      <div className="empty-state-icon-box">
         <Icon size={22} />
       </div>
-      <h4 className="font-semibold text-sm text-[var(--text-primary)] mb-1">{title}</h4>
-      <p className="text-xs text-[var(--text-muted)] max-w-sm mb-4 leading-relaxed">{description}</p>
+      <h4 className="empty-state-title">{title}</h4>
+      <p className="empty-state-desc">{description}</p>
       
       {actionLabel && actionHref && (
-        <Link href={actionHref} className="btn btn-primary btn-sm shadow-md">
+        <Link href={actionHref} className="btn btn-primary btn-sm mt-3">
           {actionLabel}
         </Link>
       )}
 
       {actionLabel && onAction && !actionHref && (
-        <button onClick={onAction} className="btn btn-primary btn-sm shadow-md">
+        <button onClick={onAction} className="btn btn-primary btn-sm mt-3">
           {actionLabel}
         </button>
       )}

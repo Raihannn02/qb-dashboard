@@ -146,7 +146,7 @@ export default function RFDevicesPage() {
 
         {/* Device Cards Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {Array.from({ length: 10 }).map((_, i) => (
               <div key={i} className="skeleton h-44 w-full" />
             ))}
@@ -160,7 +160,7 @@ export default function RFDevicesPage() {
             onAction={() => setShowAdd(true)}
           />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {rfDevices.map(rf => (
               <div
                 key={rf.id}

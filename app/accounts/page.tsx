@@ -133,7 +133,7 @@ export default function AccountsPage() {
         </div>
 
         {/* Search */}
-        <div className="card p-3 flex gap-3 items-center">
+        <div className="card p-4 mb-6 flex gap-4 items-center">
           <div className="search-bar flex-1">
             <Search size={15} className="text-[var(--text-muted)]" />
             <input
@@ -151,7 +151,7 @@ export default function AccountsPage() {
 
         {/* Grouped Account Cards Grid */}
         {loading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="skeleton h-56 w-full" />
             ))}
@@ -165,9 +165,9 @@ export default function AccountsPage() {
             onAction={() => setShowAdd(true)}
           />
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {grouped.map(({ rf, accounts: rfAccounts }) => (
-              <div key={rf.id} className="card p-4 flex flex-col justify-between overflow-hidden">
+              <div key={rf.id} className="card p-5 flex flex-col justify-between overflow-hidden">
                 <div className="flex items-center justify-between pb-3 mb-3 border-b border-[var(--border)]">
                   <div>
                     <h3 className="font-bold text-sm text-[var(--text-primary)]">{rf.name}</h3>
