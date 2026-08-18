@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // No sqlite config needed for Supabase
 };
 
 export default nextConfig;
