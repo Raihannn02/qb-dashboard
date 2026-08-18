@@ -12,7 +12,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed(!collapsed)}
       />
-      <Topbar />
+      <Topbar collapsed={collapsed} />
       <main className={`main-content ${collapsed ? 'sidebar-collapsed' : ''}`}>
         {children}
       </main>

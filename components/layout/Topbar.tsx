@@ -30,7 +30,11 @@ interface NotificationItem {
   created_at: string;
 }
 
-export default function Topbar() {
+interface TopbarProps {
+  collapsed?: boolean;
+}
+
+export default function Topbar({ collapsed }: TopbarProps) {
   const pathname = usePathname();
   const pathInfo = pathTitles[pathname] || { parent: 'App', title: 'Page' };
 
@@ -72,7 +76,7 @@ export default function Topbar() {
 
   return (
     <>
-      <header className="topbar">
+      <header className="topbar" style={{ left: collapsed ? 'var(--sidebar-collapsed)' : 'var(--sidebar-width)' }}>
         {/* Breadcrumb Navigation */}
         <div className="flex items-center gap-2 text-xs">
           <span className="text-[var(--text-muted)] font-medium">{pathInfo.parent}</span>

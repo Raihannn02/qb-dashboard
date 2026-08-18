@@ -125,7 +125,7 @@ export default function DashboardPage() {
         </div>
 
         {/* 6 Key KPI Cards */}
-        <div className="stats-grid">
+        <div className="stats-grid mb-6">
           <StatCard icon={ShoppingCart} label="Revenue" value={formatCurrency(stats.total_revenue)} sub={`${stats.completed_transactions || 0} completed`} trend="+12.5%" color="#10b981" />
           <StatCard icon={TrendingUp} label="Net Profit" value={formatCurrency(stats.net_profit)} sub="After expenses" trend="+8.4%" color="#6366f1" />
           <StatCard icon={Boxes} label="Total Stock" value={formatNumber(stats.total_stock)} sub="Units in inventory" color="#3b82f6" />
