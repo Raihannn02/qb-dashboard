@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/app/layout-dashboard';
+import ActionMenu from '@/components/ui/ActionMenu';
+import DeleteModal from '@/components/ui/DeleteModal';
+import EmptyState from '@/components/ui/EmptyState';
 import { formatCurrency } from '@/lib/utils';
-import { Monitor, Edit2, Plus, X, Check, Wifi, WifiOff, Wrench, Smartphone, Users } from 'lucide-react';
+import { Monitor, Edit2, Plus, X, Check, Wifi, WifiOff, Wrench, Smartphone, Users, Trash2 } from 'lucide-react';
 
 const RF_STATUS_COLOR: Record<string, string> = {
   Active: 'var(--success)', Offline: 'var(--danger)', Maintenance: 'var(--warning)'
@@ -17,6 +20,8 @@ export default function RFDevicesPage() {
   const [editForm, setEditForm] = useState({ monthly_cost: '', status: 'Active', notes: '' });
   const [saving, setSaving] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
   const [addForm, setAddForm] = useState({ name: '', monthly_cost: '57000', status: 'Active', notes: '' });
   const [toast, setToast] = useState<string | null>(null);
 
@@ -63,6 +68,19 @@ export default function RFDevicesPage() {
     setSaving(false);
   };
 
+  const handleDeleteRF = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/rf-devices?id=${deleteTarget.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast(`Device "${deleteTarget.name}" deleted successfully`);
+        setDeleteTarget(null);
+        fetchRF();
+      }
+    } finally { setDeleting(false); }
+  };
+
   const StatusIcon = ({ status }: { status: string }) => {
     if (status === 'Active') return <Wifi size={13} className="text-[var(--success)]" />;
     if (status === 'Offline') return <WifiOff size={13} className="text-[var(--danger)]" />;
@@ -74,7 +92,17 @@ export default function RFDevicesPage() {
 
   return (
     <DashboardLayout>
-      <div className="page-content">
+      <div className="page-content space-y-6">
+        {/* Toast */}
+        {toast && (
+          <div className="toast-container">
+            <div className="toast border-[var(--success)]">
+              <Check size={16} className="text-[var(--success)]" />
+              <span className="text-xs font-semibold">{toast}</span>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="page-header">
           <div>
@@ -87,7 +115,7 @@ export default function RFDevicesPage() {
         </div>
 
         {/* Metric Summary Grid */}
-        <div className="stats-grid mb-6">
+        <div className="stats-grid">
           <div className="stat-card">
             <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
               <span>Total RF Devices</span>
@@ -123,6 +151,14 @@ export default function RFDevicesPage() {
               <div key={i} className="skeleton h-44 w-full" />
             ))}
           </div>
+        ) : rfDevices.length === 0 ? (
+          <EmptyState
+            icon={Smartphone}
+            title="No RedFinger Devices"
+            description="Add your RedFinger cloud devices to map Roblox accounts and track server costs."
+            actionLabel="+ Add Device"
+            onAction={() => setShowAdd(true)}
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {rfDevices.map(rf => (
@@ -145,12 +181,13 @@ export default function RFDevicesPage() {
                       <div className="text-[10px] text-[var(--text-muted)] font-mono">Device #{rf.device_number}</div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => openEdit(rf)}
-                    className="btn btn-ghost btn-icon btn-sm text-[var(--text-muted)] hover:text-white"
-                  >
-                    <Edit2 size={13} />
-                  </button>
+
+                  <ActionMenu
+                    items={[
+                      { label: 'Edit Device', icon: Edit2, onClick: () => openEdit(rf) },
+                      { label: 'Delete Device', icon: Trash2, variant: 'danger', onClick: () => setDeleteTarget(rf) },
+                    ]}
+                  />
                 </div>
 
                 <div className="space-y-2 text-xs">
@@ -182,6 +219,20 @@ export default function RFDevicesPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Modal */}
+      {deleteTarget && (
+        <DeleteModal
+          isOpen={!!deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onConfirmDelete={handleDeleteRF}
+          title="Delete RF Device"
+          itemName={deleteTarget.name}
+          itemType="device"
+          hasHistoricalRecords={(deleteTarget.account_count || 0) > 0}
+          isDeleting={deleting}
+        />
+      )}
 
       {/* Edit RF Device Modal */}
       {editDevice && (
@@ -282,16 +333,6 @@ export default function RFDevicesPage() {
                 <Check size={16} /> {saving ? 'Adding...' : 'Add Device'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Toast */}
-      {toast && (
-        <div className="toast-container">
-          <div className="toast">
-            <div className="w-2.5 h-2.5 rounded-full bg-[var(--success)]" />
-            <span className="text-xs font-medium">{toast}</span>
           </div>
         </div>
       )}

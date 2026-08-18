@@ -2,10 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/app/layout-dashboard';
+import ActionMenu from '@/components/ui/ActionMenu';
+import DeleteModal from '@/components/ui/DeleteModal';
+import EmptyState from '@/components/ui/EmptyState';
 import { formatCurrency, formatPercent } from '@/lib/utils';
 import {
-  Package, Plus, Search, Edit2, PowerOff, Eye, ChevronLeft, ChevronRight, X, Check,
-  MoreVertical, Box, AlertTriangle, Layers, TrendingUp
+  Package, Plus, Search, Edit2, Eye, ChevronLeft, ChevronRight, X, Check,
+  Box, AlertTriangle, Layers, Trash2, Power, Copy
 } from 'lucide-react';
 
 const CATEGORIES = ['Fruit', 'Pet', 'Egg', 'Gear', 'Sprinkler', 'Tool', 'Variant', 'Other'];
@@ -36,8 +39,8 @@ export default function ProductsPage() {
   const [drawerTab, setDrawerTab] = useState<'overview' | 'sales'>('overview');
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [confirmDeactivate, setConfirmDeactivate] = useState<any>(null);
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
   const [toast, setToast] = useState<{msg: string, type: string} | null>(null);
   const limit = 15;
 
@@ -75,7 +78,16 @@ export default function ProductsPage() {
       unit: p.unit || 'pcs', status: p.status, notes: p.notes || '', initial_stock: '0',
     });
     setShowForm(true);
-    setActiveMenuId(null);
+  };
+
+  const openDuplicate = (p: any) => {
+    setEditProduct(null);
+    setForm({
+      name: `${p.name} (Copy)`, category: p.category, subcategory: p.subcategory || '',
+      default_price: String(p.default_price), cost_price: String(p.cost_price),
+      unit: p.unit || 'pcs', status: 'Active', notes: p.notes || '', initial_stock: '0',
+    });
+    setShowForm(true);
   };
 
   const handleSave = async () => {
@@ -105,14 +117,24 @@ export default function ProductsPage() {
     } finally { setSaving(false); }
   };
 
-  const handleDeactivate = async () => {
-    if (!confirmDeactivate) return;
-    const res = await fetch(`/api/products/${confirmDeactivate.id}`, { method: 'DELETE' });
-    if (res.ok) {
-      showToast(`Product "${confirmDeactivate.name}" deactivated`);
-      setConfirmDeactivate(null);
-      fetchProducts();
-    }
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/products/${deleteTarget.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.deactivated) {
+          showToast(`Product "${deleteTarget.name}" deactivated (historical records kept)`);
+        } else {
+          showToast(`Product "${deleteTarget.name}" deleted permanently`);
+        }
+        setDeleteTarget(null);
+        fetchProducts();
+      } else {
+        showToast('Failed to delete product', 'error');
+      }
+    } finally { setDeleting(false); }
   };
 
   const totalPages = Math.ceil(total / limit);
@@ -124,7 +146,17 @@ export default function ProductsPage() {
 
   return (
     <DashboardLayout>
-      <div className="page-content">
+      <div className="page-content space-y-6">
+        {/* Toast */}
+        {toast && (
+          <div className="toast-container">
+            <div className={`toast ${toast.type === 'error' ? 'border-[var(--danger)]' : 'border-[var(--success)]'}`}>
+              <Check size={16} className={toast.type === 'error' ? 'text-[var(--danger)]' : 'text-[var(--success)]'} />
+              <span className="text-xs font-semibold">{toast.msg}</span>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="page-header">
           <div>
@@ -137,7 +169,7 @@ export default function ProductsPage() {
         </div>
 
         {/* Metric Summary Cards */}
-        <div className="stats-grid mb-6">
+        <div className="stats-grid">
           <div className="stat-card">
             <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
               <span>Total Catalog</span>
@@ -176,7 +208,7 @@ export default function ProductsPage() {
         </div>
 
         {/* Filter Controls */}
-        <div className="card p-3 mb-4 flex gap-3 flex-wrap items-center">
+        <div className="card p-3 flex gap-3 flex-wrap items-center">
           <div className="search-bar flex-1 min-w-[240px]">
             <Search size={15} className="text-[var(--text-muted)]" />
             <input
@@ -225,7 +257,7 @@ export default function ProductsPage() {
                   <th className="text-right">Stock</th>
                   <th className="text-right">Total Profit</th>
                   <th className="text-right">Margin</th>
-                  <th className="text-center w-20">Action</th>
+                  <th className="text-center w-16">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -240,14 +272,13 @@ export default function ProductsPage() {
                 ) : products.length === 0 ? (
                   <tr>
                     <td colSpan={10}>
-                      <div className="empty-state py-12">
-                        <Package size={40} className="empty-state-icon" />
-                        <h3 className="font-bold text-sm">No Products Found</h3>
-                        <p className="text-xs text-[var(--text-muted)]">No items match your filter criteria.</p>
-                        <button onClick={openAdd} className="btn btn-primary btn-sm mt-2">
-                          <Plus size={14} /> Add Product
-                        </button>
-                      </div>
+                      <EmptyState
+                        icon={Package}
+                        title="No Products Found"
+                        description="No catalog items match your search or filter options."
+                        actionLabel="+ Add Product"
+                        onAction={openAdd}
+                      />
                     </td>
                   </tr>
                 ) : products.map((p) => {
@@ -258,7 +289,7 @@ export default function ProductsPage() {
                       <td className="font-semibold text-[var(--text-primary)]">
                         <button
                           onClick={() => setSelectedDrawerProduct(p)}
-                          className="hover:text-[var(--accent)] hover:underline text-left"
+                          className="hover:text-[var(--accent)] text-left transition-colors"
                         >
                           {p.name}
                         </button>
@@ -278,42 +309,15 @@ export default function ProductsPage() {
                       </td>
                       <td className="text-right font-bold text-[var(--success)]">{formatCurrency(p.total_profit || 0)}</td>
                       <td className="text-right text-[var(--text-muted)]">{formatPercent(margin)}</td>
-                      <td className="text-center relative">
-                        <button
-                          onClick={() => setActiveMenuId(activeMenuId === p.id ? null : p.id)}
-                          className="btn btn-ghost btn-icon btn-sm"
-                        >
-                          <MoreVertical size={16} />
-                        </button>
-
-                        {/* Inline Dropdown Menu */}
-                        {activeMenuId === p.id && (
-                          <div
-                            className="absolute right-4 mt-1 w-36 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] shadow-xl z-30 overflow-hidden py-1 text-left"
-                            onMouseLeave={() => setActiveMenuId(null)}
-                          >
-                            <button
-                              onClick={() => { setSelectedDrawerProduct(p); setActiveMenuId(null); }}
-                              className="w-full px-3 py-2 text-xs flex items-center gap-2 text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)]"
-                            >
-                              <Eye size={14} className="text-[var(--accent)]" /> View Details
-                            </button>
-                            <button
-                              onClick={() => openEdit(p)}
-                              className="w-full px-3 py-2 text-xs flex items-center gap-2 text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)]"
-                            >
-                              <Edit2 size={14} className="text-[var(--info)]" /> Edit Item
-                            </button>
-                            {p.status === 'Active' && (
-                              <button
-                                onClick={() => { setConfirmDeactivate(p); setActiveMenuId(null); }}
-                                className="w-full px-3 py-2 text-xs flex items-center gap-2 text-[var(--danger)] hover:bg-[var(--danger-bg)]"
-                              >
-                                <PowerOff size={14} /> Deactivate
-                              </button>
-                            )}
-                          </div>
-                        )}
+                      <td className="text-center">
+                        <ActionMenu
+                          items={[
+                            { label: 'View Details', icon: Eye, onClick: () => setSelectedDrawerProduct(p) },
+                            { label: 'Edit Product', icon: Edit2, onClick: () => openEdit(p) },
+                            { label: 'Duplicate', icon: Copy, onClick: () => openDuplicate(p) },
+                            { label: 'Delete Product', icon: Trash2, variant: 'danger', onClick: () => setDeleteTarget(p) },
+                          ]}
+                        />
                       </td>
                     </tr>
                   );
@@ -322,224 +326,133 @@ export default function ProductsPage() {
             </table>
           </div>
 
-          {/* Table Pagination */}
+          {/* Pagination */}
           {totalPages > 1 && (
-            <div className="px-4 py-3 border-t border-[var(--border)] flex items-center justify-between text-xs text-[var(--text-muted)] bg-[var(--bg-secondary)]">
-              <span>Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total} items</span>
-              <div className="pagination">
-                <button className="page-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-                  <ChevronLeft size={14} />
+            <div className="flex items-center justify-between p-4 border-t border-[var(--border)] text-xs">
+              <span className="text-[var(--text-muted)]">
+                Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, total)} of {total} products
+              </span>
+              <div className="flex gap-1">
+                <button
+                  disabled={page === 1}
+                  onClick={() => setPage(page - 1)}
+                  className="btn btn-secondary btn-sm"
+                >
+                  <ChevronLeft size={14} /> Previous
                 </button>
-                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                  const p = Math.max(1, Math.min(totalPages - 4, page - 2)) + i;
-                  return (
-                    <button key={p} className={`page-btn ${p === page ? 'active' : ''}`} onClick={() => setPage(p)}>
-                      {p}
-                    </button>
-                  );
-                })}
-                <button className="page-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
-                  <ChevronRight size={14} />
+                <button
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(page + 1)}
+                  className="btn btn-secondary btn-sm"
+                >
+                  Next <ChevronRight size={14} />
                 </button>
               </div>
             </div>
           )}
         </div>
-      </div>
 
-      {/* Slide-over Product Detail Drawer */}
-      {selectedDrawerProduct && (
-        <div className="modal-overlay" onClick={() => setSelectedDrawerProduct(null)}>
-          <div className="drawer" onClick={e => e.stopPropagation()}>
-            <div className="drawer-header">
-              <div>
-                <div className="text-xs font-mono text-[var(--accent)]">{selectedDrawerProduct.product_code}</div>
-                <h2 className="text-lg font-bold text-[var(--text-primary)]">{selectedDrawerProduct.name}</h2>
+        {/* Delete Confirmation Modal */}
+        {deleteTarget && (
+          <DeleteModal
+            isOpen={!!deleteTarget}
+            onClose={() => setDeleteTarget(null)}
+            onConfirmDelete={handleDelete}
+            onConfirmDeactivate={handleDelete}
+            title="Delete Product"
+            itemName={deleteTarget.name}
+            itemType="product"
+            hasHistoricalRecords={deleteTarget.total_sold > 0 || (deleteTarget.current_stock ?? 0) > 0}
+            isDeleting={deleting}
+          />
+        )}
+
+        {/* Add/Edit Modal */}
+        {showForm && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <div className="modal-header">
+                <h3 className="font-bold text-base text-[var(--text-primary)]">
+                  {editProduct ? 'Edit Product' : 'Add New Product'}
+                </h3>
+                <button onClick={() => setShowForm(false)} className="btn btn-ghost btn-icon">
+                  <X size={16} />
+                </button>
               </div>
-              <button onClick={() => setSelectedDrawerProduct(null)} className="btn btn-ghost btn-icon">
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Drawer Tabs */}
-            <div className="flex border-b border-[var(--border)] px-6 bg-[var(--bg-secondary)] text-xs font-semibold">
-              <button
-                onClick={() => setDrawerTab('overview')}
-                className={`py-3 px-4 border-b-2 transition-colors ${
-                  drawerTab === 'overview' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                Overview & Financials
-              </button>
-              <button
-                onClick={() => setDrawerTab('sales')}
-                className={`py-3 px-4 border-b-2 transition-colors ${
-                  drawerTab === 'sales' ? 'border-[var(--accent)] text-[var(--accent)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'
-                }`}
-              >
-                Sales Stats
-              </button>
-            </div>
-
-            <div className="drawer-body space-y-6">
-              {drawerTab === 'overview' && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)]">
-                      <div className="text-xs text-[var(--text-muted)] mb-1">Current Stock</div>
-                      <div className="text-xl font-bold text-[var(--text-primary)]">
-                        {selectedDrawerProduct.current_stock ?? 0} {selectedDrawerProduct.unit || 'pcs'}
-                      </div>
-                    </div>
-                    <div className="p-3.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)]">
-                      <div className="text-xs text-[var(--text-muted)] mb-1">Total Sold</div>
-                      <div className="text-xl font-bold text-[var(--success)]">
-                        {selectedDrawerProduct.total_sold || 0} units
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
-                      <span className="text-[var(--text-muted)]">Category</span>
-                      <span className="font-semibold text-[var(--text-primary)]">{selectedDrawerProduct.category}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
-                      <span className="text-[var(--text-muted)]">Default Selling Price</span>
-                      <span className="font-semibold text-[var(--text-primary)]">{formatCurrency(selectedDrawerProduct.default_price)}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
-                      <span className="text-[var(--text-muted)]">HPP Cost Price</span>
-                      <span className="font-semibold text-[var(--text-secondary)]">{formatCurrency(selectedDrawerProduct.cost_price)}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
-                      <span className="text-[var(--text-muted)]">Total Revenue Generated</span>
-                      <span className="font-bold text-[var(--success)]">{formatCurrency(selectedDrawerProduct.total_revenue || 0)}</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
-                      <span className="text-[var(--text-muted)]">Total Net Profit</span>
-                      <span className="font-bold text-[var(--accent)]">{formatCurrency(selectedDrawerProduct.total_profit || 0)}</span>
-                    </div>
-                  </div>
-
-                  {selectedDrawerProduct.notes && (
-                    <div className="p-3.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-xs">
-                      <div className="font-semibold text-[var(--text-muted)] mb-1">Item Notes</div>
-                      <p className="text-[var(--text-primary)]">{selectedDrawerProduct.notes}</p>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {drawerTab === 'sales' && (
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-xs space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-[var(--text-muted)]">Units Sold:</span>
-                      <span className="font-bold">{selectedDrawerProduct.total_sold || 0}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[var(--text-muted)]">Gross Revenue:</span>
-                      <span className="font-bold text-[var(--success)]">{formatCurrency(selectedDrawerProduct.total_revenue || 0)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-[var(--text-muted)]">Net Profit:</span>
-                      <span className="font-bold text-[var(--accent)]">{formatCurrency(selectedDrawerProduct.total_profit || 0)}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="drawer-footer">
-              <button
-                onClick={() => openEdit(selectedDrawerProduct)}
-                className="btn btn-primary text-xs"
-              >
-                <Edit2 size={14} /> Edit Product
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add / Edit Product Modal */}
-      {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="text-base font-bold text-[var(--text-primary)]">
-                {editProduct ? 'Edit Product Item' : 'Add New Grow a Garden 2 Product'}
-              </h2>
-              <button onClick={() => setShowForm(false)} className="btn btn-ghost btn-icon">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="modal-body space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2 form-group">
+              <div className="modal-body space-y-4">
+                <div className="form-group">
                   <label className="form-label">Product Name *</label>
                   <input
                     className="input"
+                    placeholder="e.g. Dragon Fruit, Raccoon"
                     value={form.name}
                     onChange={e => setForm({ ...form, name: e.target.value })}
-                    placeholder="e.g. Rainbow Fruit / Black Dragon"
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Category *</label>
-                  <select
-                    className="input"
-                    value={form.category}
-                    onChange={e => setForm({ ...form, category: e.target.value })}
-                  >
-                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                  </select>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="form-group">
+                    <label className="form-label">Category *</label>
+                    <select
+                      className="input"
+                      value={form.category}
+                      onChange={e => setForm({ ...form, category: e.target.value })}
+                    >
+                      {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Subcategory</label>
+                    <input
+                      className="input"
+                      placeholder="e.g. Mythic, Rare"
+                      value={form.subcategory}
+                      onChange={e => setForm({ ...form, subcategory: e.target.value })}
+                    />
+                  </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Subcategory</label>
-                  <input
-                    className="input"
-                    value={form.subcategory}
-                    onChange={e => setForm({ ...form, subcategory: e.target.value })}
-                    placeholder="Optional subcategory"
-                  />
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="form-group">
+                    <label className="form-label">Selling Price (Rp)</label>
+                    <input
+                      type="number"
+                      className="input"
+                      value={form.default_price}
+                      onChange={e => setForm({ ...form, default_price: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Cost / HPP (Rp)</label>
+                    <input
+                      type="number"
+                      className="input"
+                      value={form.cost_price}
+                      onChange={e => setForm({ ...form, cost_price: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Unit</label>
+                    <input
+                      className="input"
+                      placeholder="pcs"
+                      value={form.unit}
+                      onChange={e => setForm({ ...form, unit: e.target.value })}
+                    />
+                  </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label">Default Selling Price (Rp)</label>
-                  <input
-                    className="input"
-                    type="number"
-                    value={form.default_price}
-                    onChange={e => setForm({ ...form, default_price: e.target.value })}
-                    min="0"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">HPP Cost Price (Rp)</label>
-                  <input
-                    className="input"
-                    type="number"
-                    value={form.cost_price}
-                    onChange={e => setForm({ ...form, cost_price: e.target.value })}
-                    min="0"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Unit</label>
-                  <input
-                    className="input"
-                    value={form.unit}
-                    onChange={e => setForm({ ...form, unit: e.target.value })}
-                    placeholder="pcs"
-                  />
-                </div>
+                {!editProduct && (
+                  <div className="form-group">
+                    <label className="form-label">Initial Stock Units</label>
+                    <input
+                      type="number"
+                      className="input"
+                      value={form.initial_stock}
+                      onChange={e => setForm({ ...form, initial_stock: e.target.value })}
+                    />
+                  </div>
+                )}
 
                 <div className="form-group">
                   <label className="form-label">Catalog Status</label>
@@ -551,71 +464,19 @@ export default function ProductsPage() {
                     {STATUSES.map(s => <option key={s}>{s}</option>)}
                   </select>
                 </div>
-
-                {!editProduct && (
-                  <div className="form-group col-span-2">
-                    <label className="form-label">Initial Inventory Stock</label>
-                    <input
-                      className="input"
-                      type="number"
-                      value={form.initial_stock}
-                      onChange={e => setForm({ ...form, initial_stock: e.target.value })}
-                      min="0"
-                    />
-                  </div>
-                )}
-
-                <div className="form-group col-span-2">
-                  <label className="form-label">Notes & Description</label>
-                  <textarea
-                    className="input h-20 py-2 resize-none"
-                    value={form.notes}
-                    onChange={e => setForm({ ...form, notes: e.target.value })}
-                    placeholder="Additional details or attributes..."
-                  />
-                </div>
+              </div>
+              <div className="modal-footer">
+                <button onClick={() => setShowForm(false)} className="btn btn-secondary text-xs">
+                  Cancel
+                </button>
+                <button onClick={handleSave} disabled={saving} className="btn btn-primary text-xs">
+                  {saving ? 'Saving...' : editProduct ? 'Save Changes' : 'Add Product'}
+                </button>
               </div>
             </div>
-
-            <div className="modal-footer">
-              <button onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="btn btn-primary">
-                <Check size={16} /> {saving ? 'Saving...' : editProduct ? 'Save Changes' : 'Create Product'}
-              </button>
-            </div>
           </div>
-        </div>
-      )}
-
-      {/* Confirmation Modal */}
-      {confirmDeactivate && (
-        <div className="modal-overlay" onClick={() => setConfirmDeactivate(null)}>
-          <div className="modal max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="text-base font-bold text-[var(--text-primary)]">Deactivate Product?</h2>
-            </div>
-            <div className="modal-body text-xs text-[var(--text-secondary)]">
-              Are you sure you want to deactivate <strong className="text-[var(--text-primary)]">{confirmDeactivate.name}</strong>? It will no longer appear in new transactions.
-            </div>
-            <div className="modal-footer">
-              <button onClick={() => setConfirmDeactivate(null)} className="btn btn-secondary">Cancel</button>
-              <button onClick={handleDeactivate} className="btn btn-danger">
-                <PowerOff size={14} /> Deactivate
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Toast Notification */}
-      {toast && (
-        <div className="toast-container">
-          <div className="toast">
-            <div className={`w-2.5 h-2.5 rounded-full ${toast.type === 'error' ? 'bg-[var(--danger)]' : 'bg-[var(--success)]'}`} />
-            <span className="text-xs font-medium">{toast.msg}</span>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </DashboardLayout>
   );
 }

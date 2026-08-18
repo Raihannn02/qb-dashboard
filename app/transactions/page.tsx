@@ -2,10 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/app/layout-dashboard';
+import ActionMenu from '@/components/ui/ActionMenu';
+import DeleteModal from '@/components/ui/DeleteModal';
+import EmptyState from '@/components/ui/EmptyState';
 import { formatCurrency, formatPercent, formatDateTime } from '@/lib/utils';
 import {
   ShoppingCart, Plus, Search, X, ChevronLeft, ChevronRight, Edit2, Check, Trash2,
-  MoreVertical, Eye, TrendingUp, DollarSign, Clock, CheckCircle2, ShieldAlert
+  Eye, TrendingUp, DollarSign, Clock, CheckCircle2, ShieldAlert, AlertTriangle
 } from 'lucide-react';
 
 const PLATFORMS = ['G2G', 'Itemku', 'Discord', 'Direct', 'Other'];
@@ -32,13 +35,13 @@ export default function TransactionsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editTx, setEditTx] = useState<any>(null);
   const [selectedDrawerTx, setSelectedDrawerTx] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     product_id: '', quantity: '1', unit_price: '0', hpp: '0', platform: 'Direct',
     buyer_username: '', status: 'Pending', notes: ''
   });
   const [saving, setSaving] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState<any>(null);
-  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string, type?: string } | null>(null);
   const limit = 15;
 
@@ -85,7 +88,6 @@ export default function TransactionsPage() {
       status: tx.status, notes: tx.notes || '',
     });
     setShowForm(true);
-    setActiveMenuId(null);
   };
 
   const onProductChange = (id: string) => {
@@ -112,9 +114,18 @@ export default function TransactionsPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirmDelete) return;
-    const res = await fetch(`/api/transactions/${confirmDelete.id}`, { method: 'DELETE' });
-    if (res.ok) { showToast('Transaction deleted'); setConfirmDelete(null); fetchTransactions(); }
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/transactions/${deleteTarget.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast(`Transaction "${deleteTarget.transaction_code}" deleted`);
+        setDeleteTarget(null);
+        fetchTransactions();
+      } else {
+        showToast('Failed to delete transaction', 'error');
+      }
+    } finally { setDeleting(false); }
   };
 
   const updateStatus = async (tx: any, newStatus: string) => {
@@ -134,7 +145,17 @@ export default function TransactionsPage() {
 
   return (
     <DashboardLayout>
-      <div className="page-content">
+      <div className="page-content space-y-6">
+        {/* Toast */}
+        {toast && (
+          <div className="toast-container">
+            <div className={`toast ${toast.type === 'error' ? 'border-[var(--danger)]' : 'border-[var(--success)]'}`}>
+              <Check size={16} className={toast.type === 'error' ? 'text-[var(--danger)]' : 'text-[var(--success)]'} />
+              <span className="text-xs font-semibold">{toast.msg}</span>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="page-header">
           <div>
@@ -147,7 +168,7 @@ export default function TransactionsPage() {
         </div>
 
         {/* Metric Summary Cards */}
-        <div className="stats-grid mb-6">
+        <div className="stats-grid">
           <div className="stat-card">
             <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
               <span>Total Orders</span>
@@ -159,38 +180,38 @@ export default function TransactionsPage() {
 
           <div className="stat-card">
             <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
-              <span>Gross Sales (Current View)</span>
+              <span>Gross Sales</span>
               <DollarSign size={16} className="text-[var(--success)]" />
             </div>
             <div className="text-2xl font-bold text-[var(--success)]">{formatCurrency(grossSalesSum)}</div>
-            <div className="text-[11px] text-[var(--text-muted)] mt-1">Total revenue collected</div>
+            <div className="text-[11px] text-[var(--text-muted)] mt-1">Current page turnover</div>
           </div>
 
           <div className="stat-card">
             <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
-              <span>Total Net Profit</span>
+              <span>Net Profit</span>
               <TrendingUp size={16} className="text-[var(--accent)]" />
             </div>
             <div className="text-2xl font-bold text-[var(--accent)]">{formatCurrency(profitSum)}</div>
-            <div className="text-[11px] text-[var(--text-muted)] mt-1">After snapshot HPP</div>
+            <div className="text-[11px] text-[var(--text-muted)] mt-1">After cost of goods</div>
           </div>
 
           <div className="stat-card">
             <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
-              <span>Pending Delivery</span>
+              <span>Pending Fulfillment</span>
               <Clock size={16} className="text-[var(--warning)]" />
             </div>
             <div className="text-2xl font-bold text-[var(--warning)]">{pendingOrdersCount}</div>
-            <div className="text-[11px] text-[var(--text-muted)] mt-1">Awaiting completion</div>
+            <div className="text-[11px] text-[var(--text-muted)] mt-1">Orders in queue</div>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="card p-3 mb-4 flex gap-3 flex-wrap items-center">
-          <div className="search-bar flex-1 min-w-[220px]">
+        {/* Filter Controls */}
+        <div className="card p-3 flex gap-3 flex-wrap items-center">
+          <div className="search-bar flex-1 min-w-[240px]">
             <Search size={15} className="text-[var(--text-muted)]" />
             <input
-              placeholder="Search code, product, or buyer..."
+              placeholder="Search code, buyer, product..."
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1); }}
             />
@@ -218,19 +239,6 @@ export default function TransactionsPage() {
             <option value="">All Platforms</option>
             {PLATFORMS.map(p => <option key={p}>{p}</option>)}
           </select>
-
-          <input
-            type="date"
-            className="input w-auto h-9 text-xs"
-            value={dateFrom}
-            onChange={e => { setDateFrom(e.target.value); setPage(1); }}
-          />
-          <input
-            type="date"
-            className="input w-auto h-9 text-xs"
-            value={dateTo}
-            onChange={e => { setDateTo(e.target.value); setPage(1); }}
-          />
         </div>
 
         {/* Data Table */}
@@ -239,23 +247,23 @@ export default function TransactionsPage() {
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Order Code</th>
-                  <th>Date & Time</th>
+                  <th>Code</th>
+                  <th>Date</th>
                   <th>Product</th>
                   <th className="text-right">Qty</th>
-                  <th className="text-right">Unit Price</th>
+                  <th className="text-right">Price</th>
                   <th className="text-right">Total</th>
                   <th className="text-right">Profit</th>
                   <th className="text-right">Margin</th>
-                  <th>Platform</th>
+                  <th>Channel</th>
                   <th>Buyer</th>
                   <th>Status</th>
-                  <th className="text-center w-20">Action</th>
+                  <th className="text-center w-16">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
-                  Array.from({ length: 8 }).map((_, i) => (
+                  Array.from({ length: 10 }).map((_, i) => (
                     <tr key={i}>
                       {Array.from({ length: 12 }).map((_, j) => (
                         <td key={j}><div className="skeleton h-4 w-full" /></td>
@@ -265,14 +273,13 @@ export default function TransactionsPage() {
                 ) : transactions.length === 0 ? (
                   <tr>
                     <td colSpan={12}>
-                      <div className="empty-state py-12">
-                        <ShoppingCart size={40} className="empty-state-icon" />
-                        <h3 className="font-bold text-sm">No Transactions Recorded</h3>
-                        <p className="text-xs text-[var(--text-muted)]">Record your first sale to get started.</p>
-                        <button onClick={openAdd} className="btn btn-primary btn-sm mt-2">
-                          <Plus size={14} /> New Transaction
-                        </button>
-                      </div>
+                      <EmptyState
+                        icon={ShoppingCart}
+                        title="No Transactions Recorded"
+                        description="No sales transactions matched your filter search."
+                        actionLabel="+ New Transaction"
+                        onAction={openAdd}
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -283,7 +290,7 @@ export default function TransactionsPage() {
                       <td className="font-semibold text-[var(--text-primary)]">
                         <button
                           onClick={() => setSelectedDrawerTx(tx)}
-                          className="hover:text-[var(--accent)] hover:underline text-left"
+                          className="hover:text-[var(--accent)] text-left transition-colors"
                         >
                           {tx.product_name}
                         </button>
@@ -312,40 +319,15 @@ export default function TransactionsPage() {
                           )}
                         </div>
                       </td>
-                      <td className="text-center relative">
-                        <button
-                          onClick={() => setActiveMenuId(activeMenuId === tx.id ? null : tx.id)}
-                          className="btn btn-ghost btn-icon btn-sm"
-                        >
-                          <MoreVertical size={16} />
-                        </button>
-
-                        {/* Inline Action Menu */}
-                        {activeMenuId === tx.id && (
-                          <div
-                            className="absolute right-4 mt-1 w-36 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] shadow-xl z-30 overflow-hidden py-1 text-left"
-                            onMouseLeave={() => setActiveMenuId(null)}
-                          >
-                            <button
-                              onClick={() => { setSelectedDrawerTx(tx); setActiveMenuId(null); }}
-                              className="w-full px-3 py-2 text-xs flex items-center gap-2 text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)]"
-                            >
-                              <Eye size={14} className="text-[var(--accent)]" /> View Drawer
-                            </button>
-                            <button
-                              onClick={() => openEdit(tx)}
-                              className="w-full px-3 py-2 text-xs flex items-center gap-2 text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)]"
-                            >
-                              <Edit2 size={14} className="text-[var(--info)]" /> Edit Transaction
-                            </button>
-                            <button
-                              onClick={() => { setConfirmDelete(tx); setActiveMenuId(null); }}
-                              className="w-full px-3 py-2 text-xs flex items-center gap-2 text-[var(--danger)] hover:bg-[var(--danger-bg)]"
-                            >
-                              <Trash2 size={14} /> Delete
-                            </button>
-                          </div>
-                        )}
+                      <td className="text-center">
+                        <ActionMenu
+                          items={[
+                            { label: 'View Order Drawer', icon: Eye, onClick: () => setSelectedDrawerTx(tx) },
+                            { label: 'Edit Order', icon: Edit2, onClick: () => openEdit(tx) },
+                            ...(tx.status !== 'Completed' ? [{ label: 'Mark Complete', icon: CheckCircle2, onClick: () => updateStatus(tx, 'Completed') }] : []),
+                            { label: 'Delete Transaction', icon: Trash2, variant: 'danger', onClick: () => setDeleteTarget(tx) },
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))
@@ -356,7 +338,7 @@ export default function TransactionsPage() {
 
           {totalPages > 1 && (
             <div className="px-4 py-3 border-t border-[var(--border)] flex items-center justify-between text-xs text-[var(--text-muted)] bg-[var(--bg-secondary)]">
-              <span>Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total} orders</span>
+              <span>Page {page} of {totalPages}</span>
               <div className="pagination">
                 <button className="page-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
                   <ChevronLeft size={14} />
@@ -368,247 +350,133 @@ export default function TransactionsPage() {
             </div>
           )}
         </div>
-      </div>
 
-      {/* Transaction Detail Slide-Over Drawer */}
-      {selectedDrawerTx && (
-        <div className="modal-overlay" onClick={() => setSelectedDrawerTx(null)}>
-          <div className="drawer" onClick={e => e.stopPropagation()}>
-            <div className="drawer-header">
-              <div>
-                <div className="text-xs font-mono text-[var(--accent)]">{selectedDrawerTx.transaction_code}</div>
-                <h2 className="text-lg font-bold text-[var(--text-primary)]">{selectedDrawerTx.product_name}</h2>
-              </div>
-              <button onClick={() => setSelectedDrawerTx(null)} className="btn btn-ghost btn-icon">
-                <X size={18} />
-              </button>
-            </div>
+        {/* Delete Confirmation Modal */}
+        {deleteTarget && (
+          <DeleteModal
+            isOpen={!!deleteTarget}
+            onClose={() => setDeleteTarget(null)}
+            onConfirmDelete={handleDelete}
+            title="Delete Transaction"
+            itemName={`${deleteTarget.transaction_code} (${deleteTarget.product_name})`}
+            itemType="transaction"
+            isDeleting={deleting}
+          />
+        )}
 
-            <div className="drawer-body space-y-6">
-              {/* Order Status Timeline */}
-              <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] space-y-3">
-                <div className="font-semibold text-xs text-[var(--text-muted)] uppercase tracking-wider">Order Status Timeline</div>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className={STATUS_BADGE[selectedDrawerTx.status]}>{selectedDrawerTx.status}</span>
-                  <span className="text-[var(--text-muted)]">• {formatDateTime(selectedDrawerTx.created_at)}</span>
-                </div>
+        {/* New/Edit Transaction Modal */}
+        {showForm && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <div className="modal-header">
+                <h3 className="font-bold text-base text-[var(--text-primary)]">{editTx ? 'Edit Transaction' : 'New Sales Transaction'}</h3>
+                <button onClick={() => setShowForm(false)} className="btn btn-ghost btn-icon"><X size={16} /></button>
               </div>
 
-              {/* Financial Snapshot */}
-              <div className="space-y-3">
-                <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
-                  <span className="text-[var(--text-muted)]">Quantity</span>
-                  <span className="font-bold">{selectedDrawerTx.quantity} units</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
-                  <span className="text-[var(--text-muted)]">Unit Selling Price</span>
-                  <span>{formatCurrency(selectedDrawerTx.unit_price_snapshot)}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
-                  <span className="text-[var(--text-muted)]">Snapshot HPP Cost</span>
-                  <span className="text-[var(--text-secondary)]">{formatCurrency(selectedDrawerTx.hpp_snapshot)}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
-                  <span className="text-[var(--text-muted)]">Total Revenue</span>
-                  <span className="font-bold text-sm text-[var(--text-primary)]">{formatCurrency(selectedDrawerTx.total)}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
-                  <span className="text-[var(--text-muted)]">Net Profit</span>
-                  <span className="font-bold text-sm text-[var(--success)]">{formatCurrency(selectedDrawerTx.profit)}</span>
-                </div>
-                <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
-                  <span className="text-[var(--text-muted)]">Profit Margin</span>
-                  <span className="font-bold text-[var(--accent)]">{formatPercent(selectedDrawerTx.margin)}</span>
-                </div>
-              </div>
-
-              {/* Customer & Platform */}
-              <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-xs space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-[var(--text-muted)]">Channel / Platform:</span>
-                  <span className="font-semibold">{selectedDrawerTx.platform}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[var(--text-muted)]">Buyer Username:</span>
-                  <span className="font-semibold">{selectedDrawerTx.buyer_username || 'Anonymous'}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="drawer-footer">
-              <button onClick={() => openEdit(selectedDrawerTx)} className="btn btn-primary text-xs">
-                <Edit2 size={14} /> Edit Transaction
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add / Edit Transaction Modal */}
-      {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="text-base font-bold text-[var(--text-primary)]">
-                {editTx ? 'Edit Transaction Record' : 'Create New Transaction'}
-              </h2>
-              <button onClick={() => setShowForm(false)} className="btn btn-ghost btn-icon">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="modal-body space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2 form-group">
-                  <label className="form-label">Product Item *</label>
+              <div className="modal-body space-y-4">
+                <div className="form-group">
+                  <label className="form-label">Select Product *</label>
                   <select
                     className="input"
                     value={form.product_id}
                     onChange={e => onProductChange(e.target.value)}
+                    disabled={!!editTx}
                   >
-                    <option value="">Select product...</option>
+                    <option value="">Choose item from catalog...</option>
                     {products.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} ({p.product_code}) — Stock: {p.current_stock ?? 0}</option>
+                      <option key={p.id} value={p.id}>{p.name} ({p.product_code}) — {formatCurrency(p.default_price)}</option>
                     ))}
                   </select>
                 </div>
 
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="form-group">
+                    <label className="form-label">Quantity *</label>
+                    <input
+                      type="number"
+                      min="1"
+                      className="input"
+                      value={form.quantity}
+                      onChange={e => setForm({ ...form, quantity: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Unit Price (Rp)</label>
+                    <input
+                      type="number"
+                      className="input"
+                      value={form.unit_price}
+                      onChange={e => setForm({ ...form, unit_price: e.target.value })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Unit HPP (Rp)</label>
+                    <input
+                      type="number"
+                      className="input"
+                      value={form.hpp}
+                      onChange={e => setForm({ ...form, hpp: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Live Order Calculation Summary */}
+                <div className="p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <div className="text-[var(--text-muted)]">Order Total Amount</div>
+                    <div className="font-bold text-sm text-[var(--text-primary)]">{formatCurrency(calcTotal())}</div>
+                  </div>
+                  <div>
+                    <div className="text-[var(--text-muted)]">Net Transaction Profit</div>
+                    <div className="font-bold text-sm text-[var(--success)]">{formatCurrency(calcProfit())}</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="form-group">
+                    <label className="form-label">Sales Channel</label>
+                    <select
+                      className="input"
+                      value={form.platform}
+                      onChange={e => setForm({ ...form, platform: e.target.value })}
+                    >
+                      {PLATFORMS.map(p => <option key={p}>{p}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Fulfillment Status</label>
+                    <select
+                      className="input"
+                      value={form.status}
+                      onChange={e => setForm({ ...form, status: e.target.value })}
+                    >
+                      {STATUSES.map(s => <option key={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+
                 <div className="form-group">
-                  <label className="form-label">Quantity *</label>
+                  <label className="form-label">Buyer Username / Contact</label>
                   <input
                     className="input"
-                    type="number"
-                    min="1"
-                    value={form.quantity}
-                    onChange={e => setForm({ ...form, quantity: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Sales Platform</label>
-                  <select
-                    className="input"
-                    value={form.platform}
-                    onChange={e => setForm({ ...form, platform: e.target.value })}
-                  >
-                    {PLATFORMS.map(p => <option key={p}>{p}</option>)}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Unit Selling Price (Rp)</label>
-                  <input
-                    className="input"
-                    type="number"
-                    value={form.unit_price}
-                    onChange={e => setForm({ ...form, unit_price: e.target.value })}
-                    min="0"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Snapshot HPP / Unit (Rp)</label>
-                  <input
-                    className="input"
-                    type="number"
-                    value={form.hpp}
-                    onChange={e => setForm({ ...form, hpp: e.target.value })}
-                    min="0"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Order Status</label>
-                  <select
-                    className="input"
-                    value={form.status}
-                    onChange={e => setForm({ ...form, status: e.target.value })}
-                  >
-                    {STATUSES.map(s => <option key={s}>{s}</option>)}
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">Buyer Username</label>
-                  <input
-                    className="input"
+                    placeholder="e.g. RobloxUser_123"
                     value={form.buyer_username}
                     onChange={e => setForm({ ...form, buyer_username: e.target.value })}
-                    placeholder="Roblox / Discord username"
-                  />
-                </div>
-
-                {/* Calculation Live Preview */}
-                <div className="col-span-2 p-3.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] grid grid-cols-3 gap-3">
-                  <div>
-                    <div className="text-[11px] text-[var(--text-muted)]">Subtotal</div>
-                    <div className="text-sm font-bold text-[var(--text-primary)]">{formatCurrency(calcTotal())}</div>
-                  </div>
-                  <div>
-                    <div className="text-[11px] text-[var(--text-muted)]">Net Profit</div>
-                    <div className={`text-sm font-bold ${calcProfit() >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
-                      {formatCurrency(calcProfit())}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[11px] text-[var(--text-muted)]">Margin</div>
-                    <div className="text-sm font-bold text-[var(--accent)]">
-                      {calcTotal() > 0 ? `${((calcProfit() / calcTotal()) * 100).toFixed(1)}%` : '0%'}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="col-span-2 form-group">
-                  <label className="form-label">Notes & Comments</label>
-                  <textarea
-                    className="input h-16 py-2 resize-none"
-                    value={form.notes}
-                    onChange={e => setForm({ ...form, notes: e.target.value })}
-                    placeholder="Optional order notes..."
                   />
                 </div>
               </div>
-            </div>
 
-            <div className="modal-footer">
-              <button onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="btn btn-primary">
-                <Check size={16} /> {saving ? 'Saving...' : editTx ? 'Update Transaction' : 'Record Transaction'}
-              </button>
+              <div className="modal-footer">
+                <button onClick={() => setShowForm(false)} className="btn btn-secondary text-xs">Cancel</button>
+                <button onClick={handleSave} disabled={saving} className="btn btn-primary text-xs">
+                  {saving ? 'Saving...' : editTx ? 'Save Changes' : 'Create Transaction'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {confirmDelete && (
-        <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
-          <div className="modal max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="text-base font-bold text-[var(--text-primary)]">Delete Transaction Record?</h2>
-            </div>
-            <div className="modal-body text-xs text-[var(--text-secondary)]">
-              This will permanently remove <strong className="text-[var(--text-primary)]">{confirmDelete.transaction_code}</strong>.
-            </div>
-            <div className="modal-footer">
-              <button onClick={() => setConfirmDelete(null)} className="btn btn-secondary">Cancel</button>
-              <button onClick={handleDelete} className="btn btn-danger">
-                <Trash2 size={14} /> Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Toast Notification */}
-      {toast && (
-        <div className="toast-container">
-          <div className="toast">
-            <div className={`w-2.5 h-2.5 rounded-full ${toast.type === 'error' ? 'bg-[var(--danger)]' : 'bg-[var(--success)]'}`} />
-            <span className="text-xs font-medium">{toast.msg}</span>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </DashboardLayout>
   );
 }

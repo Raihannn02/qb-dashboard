@@ -2,8 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/app/layout-dashboard';
+import ActionMenu from '@/components/ui/ActionMenu';
+import EmptyState from '@/components/ui/EmptyState';
 import { formatCurrency } from '@/lib/utils';
-import { Boxes, Search, X, ChevronLeft, ChevronRight, ArrowUpDown, AlertTriangle, CheckCircle, Package } from 'lucide-react';
+import { Boxes, Search, X, ChevronLeft, ChevronRight, ArrowUpDown, AlertTriangle, CheckCircle, Package, Eye, History } from 'lucide-react';
+import Link from 'next/link';
 
 const CATEGORIES = ['Fruit', 'Pet', 'Egg', 'Gear', 'Sprinkler', 'Tool', 'Variant', 'Other'];
 const STOCK_STATUSES = ['In Stock', 'Low Stock', 'Out of Stock'];
@@ -82,17 +85,20 @@ export default function InventoryPage() {
 
   return (
     <DashboardLayout>
-      <div className="page-content">
+      <div className="page-content space-y-6">
         {/* Header */}
         <div className="page-header">
           <div>
             <h1 className="page-title">Stock Management</h1>
             <div className="page-subtitle">Real-time inventory levels and warehouse stock adjustments</div>
           </div>
+          <Link href="/stock-movements" className="btn btn-secondary text-xs flex items-center gap-1.5">
+            <History size={14} /> View Movement Audit Logs
+          </Link>
         </div>
 
         {/* KPI Cards */}
-        <div className="stats-grid mb-6">
+        <div className="stats-grid">
           <div className="stat-card">
             <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
               <span>Total Units in Stock</span>
@@ -131,7 +137,7 @@ export default function InventoryPage() {
         </div>
 
         {/* Filters */}
-        <div className="card p-3 mb-4 flex gap-3 flex-wrap items-center">
+        <div className="card p-3 flex gap-3 flex-wrap items-center">
           <div className="search-bar flex-1 min-w-[240px]">
             <Search size={15} className="text-[var(--text-muted)]" />
             <input
@@ -178,7 +184,7 @@ export default function InventoryPage() {
                   <th className="text-right">Unit Price</th>
                   <th className="text-right">Stock Value</th>
                   <th>Status</th>
-                  <th className="text-center w-24">Adjust</th>
+                  <th className="text-center w-16">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -193,11 +199,13 @@ export default function InventoryPage() {
                 ) : inventory.length === 0 ? (
                   <tr>
                     <td colSpan={8}>
-                      <div className="empty-state py-12">
-                        <Boxes size={40} className="empty-state-icon" />
-                        <h3 className="font-bold text-sm">No Stock Records</h3>
-                        <p className="text-xs text-[var(--text-muted)]">No inventory matched your filter search.</p>
-                      </div>
+                      <EmptyState
+                        icon={Boxes}
+                        title="No Stock Records"
+                        description="No inventory records matched your search or filter options."
+                        actionLabel="View Catalog"
+                        actionHref="/products"
+                      />
                     </td>
                   </tr>
                 ) : (
@@ -215,16 +223,23 @@ export default function InventoryPage() {
                       <td className="text-right font-semibold text-[var(--success)]">{formatCurrency(item.stock_value)}</td>
                       <td><span className={stockBadge(item.stock_status)}>{item.stock_status}</span></td>
                       <td className="text-center">
-                        <button
-                          onClick={() => {
-                            setShowAdjust(item);
-                            setAdjustForm({ type: 'Stock In', quantity: '', notes: '' });
-                          }}
-                          className="btn btn-secondary btn-icon btn-sm"
-                          title="Adjust Stock Level"
-                        >
-                          <ArrowUpDown size={14} />
-                        </button>
+                        <ActionMenu
+                          items={[
+                            {
+                              label: 'Adjust Stock',
+                              icon: ArrowUpDown,
+                              onClick: () => {
+                                setShowAdjust(item);
+                                setAdjustForm({ type: 'Stock In', quantity: '', notes: '' });
+                              }
+                            },
+                            {
+                              label: 'Movement Logs',
+                              icon: History,
+                              onClick: () => { window.location.href = `/stock-movements?product_id=${item.id}`; }
+                            }
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))
@@ -261,9 +276,12 @@ export default function InventoryPage() {
             </div>
 
             <div className="modal-body space-y-4">
-              <div className="p-3.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)]">
+              <div className="p-3.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] space-y-1">
                 <div className="font-bold text-sm text-[var(--text-primary)]">{showAdjust.name}</div>
-                <div className="text-xs text-[var(--text-muted)]">Code: {showAdjust.product_code}</div>
+                <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
+                  <span>Product Code: <span className="font-mono">{showAdjust.product_code}</span></span>
+                  <span>Current: <span className="font-bold text-[var(--text-primary)]">{showAdjust.current_stock} {showAdjust.unit || 'pcs'}</span></span>
+                </div>
               </div>
 
               <div className="form-group">
@@ -273,71 +291,54 @@ export default function InventoryPage() {
                   value={adjustForm.type}
                   onChange={e => setAdjustForm({ ...adjustForm, type: e.target.value })}
                 >
-                  <option value="Stock In">Stock In (Receive + Add)</option>
-                  <option value="Stock Out">Stock Out (Deduct)</option>
-                  <option value="Adjustment">Set Exact Stock</option>
-                  <option value="Return">Customer Return (+ Add)</option>
+                  <option value="Stock In">Stock In (+ Add Stock)</option>
+                  <option value="Stock Out">Stock Out (- Remove Stock)</option>
+                  <option value="Return">Customer Return (+ Restock)</option>
+                  <option value="Correction">Manual Correction (Set Exact)</option>
                 </select>
               </div>
 
               <div className="form-group">
-                <label className="form-label">Quantity</label>
+                <label className="form-label">Quantity ({showAdjust.unit || 'pcs'}) *</label>
                 <input
-                  className="input"
                   type="number"
+                  min="1"
+                  className="input"
+                  placeholder="e.g. 50"
                   value={adjustForm.quantity}
                   onChange={e => setAdjustForm({ ...adjustForm, quantity: e.target.value })}
-                  min="1"
-                  placeholder="Enter amount..."
                 />
               </div>
 
-              {/* Math Preview Box */}
+              {/* Dynamic Math Preview */}
               {qtyVal > 0 && (
-                <div className="p-3.5 rounded-xl bg-[var(--accent-light)] border border-[var(--accent-glow)] text-xs space-y-1">
-                  <div className="font-bold text-[var(--accent)] mb-1">Stock Math Preview</div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">Current Stock:</span>
-                    <span>{currentVal}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[var(--text-muted)]">Movement ({adjustForm.type}):</span>
-                    <span>{adjustForm.type === 'Stock Out' ? `-${qtyVal}` : `+${qtyVal}`}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-[var(--border)] pt-1.5 font-bold text-sm text-[var(--text-primary)]">
-                    <span>New Stock Level:</span>
-                    <span className="text-[var(--success)]">{newCalculatedStock} units</span>
-                  </div>
+                <div className="p-3 rounded-xl bg-[var(--accent-light)] border border-[var(--accent-glow)] text-xs flex items-center justify-between">
+                  <span className="text-[var(--text-secondary)] font-medium">New Calculated Stock:</span>
+                  <span className="font-bold text-sm text-[var(--accent)]">
+                    {currentVal} → {newCalculatedStock} {showAdjust.unit || 'pcs'}
+                  </span>
                 </div>
               )}
 
               <div className="form-group">
-                <label className="form-label">Reason / Notes</label>
-                <textarea
-                  className="input h-16 py-2 resize-none"
+                <label className="form-label">Adjustment Reason / Notes</label>
+                <input
+                  className="input"
+                  placeholder="e.g. Restock from supplier, damaged goods"
                   value={adjustForm.notes}
                   onChange={e => setAdjustForm({ ...adjustForm, notes: e.target.value })}
-                  placeholder="e.g. Restock from supplier / Damaged item..."
                 />
               </div>
             </div>
 
             <div className="modal-footer">
-              <button onClick={() => setShowAdjust(null)} className="btn btn-secondary">Cancel</button>
-              <button onClick={handleAdjust} disabled={saving || !adjustForm.quantity} className="btn btn-primary">
-                {saving ? 'Saving...' : 'Apply Stock Adjustment'}
+              <button onClick={() => setShowAdjust(null)} className="btn btn-secondary text-xs">
+                Cancel
+              </button>
+              <button onClick={handleAdjust} disabled={saving || !qtyVal} className="btn btn-primary text-xs">
+                {saving ? 'Saving...' : 'Confirm Stock Adjustment'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Toast Notification */}
-      {toast && (
-        <div className="toast-container">
-          <div className="toast">
-            <CheckCircle size={16} className="text-[var(--success)] shrink-0" />
-            <span className="text-xs font-medium">{toast}</span>
           </div>
         </div>
       )}

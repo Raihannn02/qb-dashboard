@@ -2,6 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/app/layout-dashboard';
+import ActionMenu from '@/components/ui/ActionMenu';
+import DeleteModal from '@/components/ui/DeleteModal';
+import EmptyState from '@/components/ui/EmptyState';
 import { Users, Search, X, Plus, Check, Edit2, Trash2, ShieldCheck, AlertCircle } from 'lucide-react';
 
 const ACCOUNT_STATUSES = ['Logged In', 'Belum Login', 'Problem', 'Maintenance'];
@@ -21,6 +24,8 @@ export default function AccountsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [addForm, setAddForm] = useState({ rf_device_id: '', username: '', status: 'Logged In', notes: '' });
   const [editAcc, setEditAcc] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -63,15 +68,32 @@ export default function AccountsPage() {
     if (res.ok) { showToast('Account updated successfully'); setEditAcc(null); fetchData(); }
   };
 
-  const handleDelete = async (acc: any) => {
-    if (!confirm(`Delete account "${acc.username}"?`)) return;
-    await fetch(`/api/accounts?id=${acc.id}`, { method: 'DELETE' });
-    showToast('Account deleted'); fetchData();
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/accounts?id=${deleteTarget.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast(`Account "${deleteTarget.username}" deleted successfully`);
+        setDeleteTarget(null);
+        fetchData();
+      }
+    } finally { setDeleting(false); }
   };
 
   return (
     <DashboardLayout>
-      <div className="page-content">
+      <div className="page-content space-y-6">
+        {/* Toast */}
+        {toast && (
+          <div className="toast-container">
+            <div className="toast border-[var(--success)]">
+              <Check size={16} className="text-[var(--success)]" />
+              <span className="text-xs font-semibold">{toast}</span>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="page-header">
           <div>
@@ -84,7 +106,7 @@ export default function AccountsPage() {
         </div>
 
         {/* Device Quick Filter Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2">
           <button
             onClick={() => setRfFilter('')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border ${
@@ -111,7 +133,7 @@ export default function AccountsPage() {
         </div>
 
         {/* Search */}
-        <div className="card p-3 mb-6 flex gap-3 items-center">
+        <div className="card p-3 flex gap-3 items-center">
           <div className="search-bar flex-1">
             <Search size={15} className="text-[var(--text-muted)]" />
             <input
@@ -134,6 +156,14 @@ export default function AccountsPage() {
               <div key={i} className="skeleton h-56 w-full" />
             ))}
           </div>
+        ) : accounts.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title="No Roblox Accounts Found"
+            description="Add your Roblox farming accounts to link them to RedFinger cloud devices."
+            actionLabel="+ Add Account"
+            onAction={() => setShowAdd(true)}
+          />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {grouped.map(({ rf, accounts: rfAccounts }) => (
@@ -157,25 +187,21 @@ export default function AccountsPage() {
                     {rfAccounts.map(acc => (
                       <div
                         key={acc.id}
-                        className="flex items-center justify-between p-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] text-xs group"
+                        className="flex items-center justify-between p-2.5 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] text-xs"
                       >
-                        <span className="font-mono font-medium text-[var(--text-primary)]">{acc.username}</span>
+                        <div className="font-medium text-[var(--text-primary)] truncate max-w-[140px]">
+                          {acc.username}
+                        </div>
                         <div className="flex items-center gap-2">
-                          <span className={STATUS_BADGE[acc.status] || 'badge badge-inactive'}>{acc.status}</span>
-                          <button
-                            onClick={() => setEditAcc({ ...acc })}
-                            className="text-[var(--text-muted)] hover:text-white p-1"
-                            title="Edit Account Status"
-                          >
-                            <Edit2 size={12} />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(acc)}
-                            className="text-[var(--text-muted)] hover:text-[var(--danger)] p-1"
-                            title="Delete"
-                          >
-                            <Trash2 size={12} />
-                          </button>
+                          <span className={STATUS_BADGE[acc.status] || 'badge badge-inactive'}>
+                            {acc.status}
+                          </span>
+                          <ActionMenu
+                            items={[
+                              { label: 'Edit Account', icon: Edit2, onClick: () => setEditAcc(acc) },
+                              { label: 'Delete Account', icon: Trash2, variant: 'danger', onClick: () => setDeleteTarget(acc) },
+                            ]}
+                          />
                         </div>
                       </div>
                     ))}
@@ -185,126 +211,110 @@ export default function AccountsPage() {
             ))}
           </div>
         )}
+
+        {/* Delete Confirmation Modal */}
+        {deleteTarget && (
+          <DeleteModal
+            isOpen={!!deleteTarget}
+            onClose={() => setDeleteTarget(null)}
+            onConfirmDelete={handleDelete}
+            title="Delete Roblox Account"
+            itemName={deleteTarget.username}
+            itemType="account"
+            isDeleting={deleting}
+          />
+        )}
+
+        {/* Edit Modal */}
+        {editAcc && (
+          <div className="modal-overlay" onClick={() => setEditAcc(null)}>
+            <div className="modal max-w-sm" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3 className="font-bold text-base text-[var(--text-primary)]">Edit @{editAcc.username}</h3>
+                <button onClick={() => setEditAcc(null)} className="btn btn-ghost btn-icon"><X size={16} /></button>
+              </div>
+              <div className="modal-body space-y-4">
+                <div className="form-group">
+                  <label className="form-label">Account Status</label>
+                  <select
+                    className="input"
+                    value={editAcc.status}
+                    onChange={e => setEditAcc({ ...editAcc, status: e.target.value })}
+                  >
+                    {ACCOUNT_STATUSES.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Notes</label>
+                  <input
+                    className="input"
+                    placeholder="Optional notes"
+                    value={editAcc.notes || ''}
+                    onChange={e => setEditAcc({ ...editAcc, notes: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button onClick={() => setEditAcc(null)} className="btn btn-secondary text-xs">Cancel</button>
+                <button onClick={handleEdit} className="btn btn-primary text-xs">Save Changes</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Add Modal */}
+        {showAdd && (
+          <div className="modal-overlay" onClick={() => setShowAdd(false)}>
+            <div className="modal max-w-sm" onClick={e => e.stopPropagation()}>
+              <div className="modal-header">
+                <h3 className="font-bold text-base text-[var(--text-primary)]">Add Roblox Account</h3>
+                <button onClick={() => setShowAdd(false)} className="btn btn-ghost btn-icon"><X size={16} /></button>
+              </div>
+              <div className="modal-body space-y-4">
+                <div className="form-group">
+                  <label className="form-label">RedFinger Device *</label>
+                  <select
+                    className="input"
+                    value={addForm.rf_device_id}
+                    onChange={e => setAddForm({ ...addForm, rf_device_id: e.target.value })}
+                  >
+                    <option value="">Select RF Device...</option>
+                    {rfDevices.map(rf => <option key={rf.id} value={rf.id}>{rf.name}</option>)}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Roblox Username *</label>
+                  <input
+                    className="input"
+                    placeholder="e.g. FarmerJohn_99"
+                    value={addForm.username}
+                    onChange={e => setAddForm({ ...addForm, username: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Initial Status</label>
+                  <select
+                    className="input"
+                    value={addForm.status}
+                    onChange={e => setAddForm({ ...addForm, status: e.target.value })}
+                  >
+                    {ACCOUNT_STATUSES.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button onClick={() => setShowAdd(false)} className="btn btn-secondary text-xs">Cancel</button>
+                <button onClick={handleAdd} disabled={saving} className="btn btn-primary text-xs">
+                  {saving ? 'Adding...' : 'Add Account'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-
-      {/* Add Account Modal */}
-      {showAdd && (
-        <div className="modal-overlay" onClick={() => setShowAdd(false)}>
-          <div className="modal max-w-sm" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="text-base font-bold text-[var(--text-primary)]">Add Roblox Account</h2>
-              <button onClick={() => setShowAdd(false)} className="btn btn-ghost btn-icon">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="modal-body space-y-4">
-              <div className="form-group">
-                <label className="form-label">RedFinger Device *</label>
-                <select
-                  className="input"
-                  value={addForm.rf_device_id}
-                  onChange={e => setAddForm({ ...addForm, rf_device_id: e.target.value })}
-                >
-                  <option value="">Select RF Device...</option>
-                  {rfDevices.map(rf => <option key={rf.id} value={rf.id}>{rf.name}</option>)}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Roblox Username *</label>
-                <input
-                  className="input"
-                  value={addForm.username}
-                  onChange={e => setAddForm({ ...addForm, username: e.target.value })}
-                  placeholder="e.g. Farmer_Pro99"
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Account Status</label>
-                <select
-                  className="input"
-                  value={addForm.status}
-                  onChange={e => setAddForm({ ...addForm, status: e.target.value })}
-                >
-                  {ACCOUNT_STATUSES.map(s => <option key={s}>{s}</option>)}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Notes</label>
-                <input
-                  className="input"
-                  value={addForm.notes}
-                  onChange={e => setAddForm({ ...addForm, notes: e.target.value })}
-                  placeholder="Optional details"
-                />
-              </div>
-
-              <div className="p-3 rounded-lg bg-[var(--warning-bg)] border border-amber-500/20 text-amber-400 text-xs flex items-center gap-2">
-                <ShieldCheck size={16} className="shrink-0" />
-                <span>Security Notice: Never enter Roblox passwords here. Usernames only.</span>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button onClick={() => setShowAdd(false)} className="btn btn-secondary">Cancel</button>
-              <button onClick={handleAdd} disabled={saving} className="btn btn-primary">
-                <Check size={16} /> {saving ? 'Adding...' : 'Add Account'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Account Modal */}
-      {editAcc && (
-        <div className="modal-overlay" onClick={() => setEditAcc(null)}>
-          <div className="modal max-w-sm" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="text-base font-bold text-[var(--text-primary)]">Edit {editAcc.username}</h2>
-              <button onClick={() => setEditAcc(null)} className="btn btn-ghost btn-icon">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="modal-body space-y-4">
-              <div className="form-group">
-                <label className="form-label">Status</label>
-                <select
-                  className="input"
-                  value={editAcc.status}
-                  onChange={e => setEditAcc({ ...editAcc, status: e.target.value })}
-                >
-                  {ACCOUNT_STATUSES.map(s => <option key={s}>{s}</option>)}
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Notes</label>
-                <input
-                  className="input"
-                  value={editAcc.notes || ''}
-                  onChange={e => setEditAcc({ ...editAcc, notes: e.target.value })}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button onClick={() => setEditAcc(null)} className="btn btn-secondary">Cancel</button>
-              <button onClick={handleEdit} className="btn btn-primary">
-                <Check size={16} /> Save Changes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Toast */}
-      {toast && (
-        <div className="toast-container">
-          <div className="toast">
-            <div className="w-2.5 h-2.5 rounded-full bg-[var(--success)]" />
-            <span className="text-xs font-medium">{toast}</span>
-          </div>
-        </div>
-      )}
     </DashboardLayout>
   );
 }

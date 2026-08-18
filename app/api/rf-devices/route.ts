@@ -67,3 +67,29 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
+
+    const { count } = await supabase.from('roblox_accounts').select('id', { count: 'exact', head: true }).eq('rf_device_id', id);
+    if ((count || 0) > 0) {
+      await supabase.from('roblox_accounts').update({ rf_device_id: null }).eq('rf_device_id', id);
+    }
+
+    const { data: rf } = await supabase.from('rf_devices').select('name').eq('id', id).single();
+    const { error } = await supabase.from('rf_devices').delete().eq('id', id);
+    if (error) throw error;
+
+    await supabase.from('activity_logs').insert({
+      id: generateId(), action: 'DELETE_RF_DEVICE', entity_type: 'rf_device', entity_id: id,
+      description: `Deleted RF device "${rf?.name}"`,
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

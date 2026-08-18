@@ -2,8 +2,11 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/app/layout-dashboard';
+import ActionMenu from '@/components/ui/ActionMenu';
+import DeleteModal from '@/components/ui/DeleteModal';
+import EmptyState from '@/components/ui/EmptyState';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Receipt, Plus, Edit2, Trash2, Check, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Receipt, Plus, Edit2, Trash2, Check, X, ChevronLeft, ChevronRight, Eye } from 'lucide-react';
 
 const CATEGORIES = ['RedFinger', 'Internet', 'Electricity', 'Software', 'Marketplace Fee', 'Operational', 'Other'];
 
@@ -18,6 +21,8 @@ export default function ExpensesPage() {
   const [category, setCategory] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editExp, setEditExp] = useState<any>(null);
+  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({ date: new Date().toISOString().split('T')[0], category: 'Operational', description: '', amount: '', notes: '' });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string, type?: string } | null>(null);
@@ -63,17 +68,36 @@ export default function ExpensesPage() {
     setSaving(false);
   };
 
-  const handleDelete = async (exp: any) => {
-    if (!confirm(`Delete expense "${exp.description}"?`)) return;
-    const res = await fetch(`/api/expenses?id=${exp.id}`, { method: 'DELETE' });
-    if (res.ok) { showToast('Expense deleted'); fetchExpenses(); }
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/expenses?id=${deleteTarget.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        showToast(`Expense "${deleteTarget.description}" (${formatCurrency(deleteTarget.amount)}) removed`);
+        setDeleteTarget(null);
+        fetchExpenses();
+      } else {
+        showToast('Failed to delete expense', 'error');
+      }
+    } finally { setDeleting(false); }
   };
 
   const totalPages = Math.ceil(total / limit);
 
   return (
     <DashboardLayout>
-      <div className="page-content">
+      <div className="page-content space-y-6">
+        {/* Toast */}
+        {toast && (
+          <div className="toast-container">
+            <div className={`toast ${toast.type === 'error' ? 'border-[var(--danger)]' : 'border-[var(--success)]'}`}>
+              <Check size={16} className={toast.type === 'error' ? 'text-[var(--danger)]' : 'text-[var(--success)]'} />
+              <span className="text-xs font-semibold">{toast.msg}</span>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="page-header">
           <div>
@@ -86,7 +110,7 @@ export default function ExpensesPage() {
         </div>
 
         {/* Metric Card */}
-        <div className="stats-grid mb-6">
+        <div className="stats-grid">
           <div className="stat-card">
             <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
               <span>Total Expenses (Current View)</span>
@@ -98,7 +122,7 @@ export default function ExpensesPage() {
         </div>
 
         {/* Filters */}
-        <div className="card p-3 mb-4 flex gap-3 flex-wrap items-center">
+        <div className="card p-3 flex gap-3 flex-wrap items-center">
           <select
             value={category}
             onChange={e => { setCategory(e.target.value); setPage(1); }}
@@ -132,7 +156,7 @@ export default function ExpensesPage() {
                   <th>Description</th>
                   <th className="text-right">Amount</th>
                   <th>Notes</th>
-                  <th className="text-center w-24">Actions</th>
+                  <th className="text-center w-16">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -147,33 +171,30 @@ export default function ExpensesPage() {
                 ) : expenses.length === 0 ? (
                   <tr>
                     <td colSpan={6}>
-                      <div className="empty-state py-12">
-                        <Receipt size={40} className="empty-state-icon" />
-                        <h3 className="font-bold text-sm">No Expense Records</h3>
-                        <p className="text-xs text-[var(--text-muted)]">Track operational costs to accurately see net profit.</p>
-                        <button onClick={openAdd} className="btn btn-primary btn-sm mt-2">
-                          <Plus size={14} /> Record Expense
-                        </button>
-                      </div>
+                      <EmptyState
+                        icon={Receipt}
+                        title="No Expense Records"
+                        description="Track operational costs to accurately see net profit."
+                        actionLabel="+ Record Expense"
+                        onAction={openAdd}
+                      />
                     </td>
                   </tr>
                 ) : (
-                  expenses.map(exp => (
-                    <tr key={exp.id}>
-                      <td className="text-xs text-[var(--text-muted)] whitespace-nowrap">{formatDate(exp.date)}</td>
-                      <td><span className="badge badge-inactive">{exp.category}</span></td>
-                      <td className="font-semibold text-[var(--text-primary)]">{exp.description}</td>
-                      <td className="text-right font-bold text-[var(--danger)]">{formatCurrency(exp.amount)}</td>
-                      <td className="text-xs text-[var(--text-muted)]">{exp.notes || '—'}</td>
+                  expenses.map((e) => (
+                    <tr key={e.id}>
+                      <td className="font-mono text-xs text-[var(--text-muted)]">{formatDate(e.date)}</td>
+                      <td><span className="badge badge-inactive">{e.category}</span></td>
+                      <td className="font-semibold text-[var(--text-primary)]">{e.description}</td>
+                      <td className="text-right font-bold text-[var(--danger)]">{formatCurrency(e.amount)}</td>
+                      <td className="text-xs text-[var(--text-muted)] max-w-xs truncate">{e.notes || '-'}</td>
                       <td className="text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => openEdit(exp)} className="btn btn-secondary btn-icon btn-sm">
-                            <Edit2 size={13} />
-                          </button>
-                          <button onClick={() => handleDelete(exp)} className="btn btn-danger btn-icon btn-sm">
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
+                        <ActionMenu
+                          items={[
+                            { label: 'Edit Record', icon: Edit2, onClick: () => openEdit(e) },
+                            { label: 'Delete Expense', icon: Trash2, variant: 'danger', onClick: () => setDeleteTarget(e) },
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))
@@ -183,104 +204,78 @@ export default function ExpensesPage() {
           </div>
 
           {totalPages > 1 && (
-            <div className="px-4 py-3 border-t border-[var(--border)] flex items-center justify-between text-xs text-[var(--text-muted)] bg-[var(--bg-secondary)]">
-              <span>Page {page} of {totalPages}</span>
-              <div className="pagination">
-                <button className="page-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
-                  <ChevronLeft size={14} />
+            <div className="flex items-center justify-between p-4 border-t border-[var(--border)] text-xs">
+              <span className="text-[var(--text-muted)]">Showing page {page} of {totalPages}</span>
+              <div className="flex gap-1">
+                <button disabled={page === 1} onClick={() => setPage(page - 1)} className="btn btn-secondary btn-sm">
+                  <ChevronLeft size={14} /> Previous
                 </button>
-                <button className="page-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
-                  <ChevronRight size={14} />
+                <button disabled={page >= totalPages} onClick={() => setPage(page + 1)} className="btn btn-secondary btn-sm">
+                  Next <ChevronRight size={14} />
                 </button>
               </div>
             </div>
           )}
         </div>
-      </div>
 
-      {/* Add / Edit Expense Modal */}
-      {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal max-w-md" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2 className="text-base font-bold text-[var(--text-primary)]">
-                {editExp ? 'Edit Expense Record' : 'Record Operational Expense'}
-              </h2>
-              <button onClick={() => setShowForm(false)} className="btn btn-ghost btn-icon">
-                <X size={18} />
-              </button>
-            </div>
-            <div className="modal-body space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="form-group">
-                  <label className="form-label">Expense Date *</label>
-                  <input
-                    type="date"
-                    className="input"
-                    value={form.date}
-                    onChange={e => setForm({ ...form, date: e.target.value })}
-                  />
+        {/* Delete Confirmation Modal */}
+        {deleteTarget && (
+          <DeleteModal
+            isOpen={!!deleteTarget}
+            onClose={() => setDeleteTarget(null)}
+            onConfirmDelete={handleDelete}
+            title="Delete Expense Record"
+            itemName={`${deleteTarget.description} (${formatCurrency(deleteTarget.amount)})`}
+            itemType="expense"
+            isDeleting={deleting}
+          />
+        )}
+
+        {/* Form Modal */}
+        {showForm && (
+          <div className="modal-overlay">
+            <div className="modal">
+              <div className="modal-header">
+                <h3 className="font-bold text-base text-[var(--text-primary)]">{editExp ? 'Edit Expense' : 'Record Expense'}</h3>
+                <button onClick={() => setShowForm(false)} className="btn btn-ghost btn-icon"><X size={16} /></button>
+              </div>
+              <div className="modal-body space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="form-group">
+                    <label className="form-label">Date *</label>
+                    <input type="date" className="input" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Category *</label>
+                    <select className="input" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                      {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
                 </div>
+
                 <div className="form-group">
-                  <label className="form-label">Category *</label>
-                  <select
-                    className="input"
-                    value={form.category}
-                    onChange={e => setForm({ ...form, category: e.target.value })}
-                  >
-                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div className="col-span-2 form-group">
                   <label className="form-label">Description *</label>
-                  <input
-                    className="input"
-                    value={form.description}
-                    onChange={e => setForm({ ...form, description: e.target.value })}
-                    placeholder="e.g. RedFinger Monthly Subscription August"
-                  />
+                  <input className="input" placeholder="e.g. RedFinger Monthly Server 1" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
                 </div>
+
                 <div className="form-group">
                   <label className="form-label">Amount (Rp) *</label>
-                  <input
-                    type="number"
-                    className="input"
-                    value={form.amount}
-                    onChange={e => setForm({ ...form, amount: e.target.value })}
-                    min="0"
-                    placeholder="0"
-                  />
+                  <input type="number" className="input" placeholder="0" value={form.amount} onChange={e => setForm({ ...form, amount: e.target.value })} />
                 </div>
+
                 <div className="form-group">
                   <label className="form-label">Notes</label>
-                  <input
-                    className="input"
-                    value={form.notes}
-                    onChange={e => setForm({ ...form, notes: e.target.value })}
-                    placeholder="Optional details..."
-                  />
+                  <input className="input" placeholder="Optional notes" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
                 </div>
               </div>
-            </div>
-            <div className="modal-footer">
-              <button onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="btn btn-primary">
-                <Check size={16} /> {saving ? 'Saving...' : editExp ? 'Update Record' : 'Save Expense'}
-              </button>
+              <div className="modal-footer">
+                <button onClick={() => setShowForm(false)} className="btn btn-secondary text-xs">Cancel</button>
+                <button onClick={handleSave} disabled={saving} className="btn btn-primary text-xs">{saving ? 'Saving...' : 'Save Expense'}</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Toast */}
-      {toast && (
-        <div className="toast-container">
-          <div className="toast">
-            <div className={`w-2.5 h-2.5 rounded-full ${toast.type === 'error' ? 'bg-[var(--danger)]' : 'bg-[var(--success)]'}`} />
-            <span className="text-xs font-medium">{toast.msg}</span>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </DashboardLayout>
   );
 }
