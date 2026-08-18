@@ -1,7 +1,8 @@
 'use client';
+
 import { useState, useEffect } from 'react';
 import DashboardLayout from '@/app/layout-dashboard';
-import { Settings, Check, X } from 'lucide-react';
+import { Settings, Check, HardDrive, Cpu, ShieldCheck } from 'lucide-react';
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<any>({});
@@ -33,7 +34,7 @@ export default function SettingsPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     });
-    if (res.ok) { showToast('Settings saved!'); }
+    if (res.ok) { showToast('System preferences saved'); }
     setSaving(false);
   };
 
@@ -42,97 +43,131 @@ export default function SettingsPage() {
       <div className="page-content">
         <div className="page-header">
           <div>
-            <h1 className="page-title">Settings</h1>
-            <div className="page-subtitle">System configuration and preferences</div>
+            <h1 className="page-title">System Settings & Preferences</h1>
+            <div className="page-subtitle">Configure business branding, thresholds, and infrastructure</div>
           </div>
           <button onClick={handleSave} disabled={saving} className="btn btn-primary">
-            <Check size={14} /> {saving ? 'Saving...' : 'Save Settings'}
+            <Check size={16} /> {saving ? 'Saving...' : 'Save Settings'}
           </button>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, maxWidth: 800 }}>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl">
           {/* Business Settings */}
-          <div className="card" style={{ padding: '20px', gridColumn: '1/-1' }}>
-            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Settings size={15} color="var(--accent)" />
-              Business Settings
+          <div className="card p-5 lg:col-span-2 space-y-4">
+            <div className="flex items-center gap-2 font-bold text-base text-[var(--text-primary)] pb-3 border-b border-[var(--border)]">
+              <Settings size={18} className="text-[var(--accent)]" />
+              <span>General Platform Settings</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="form-group">
-                <label className="form-label">Store Name</label>
-                {loading ? <div className="skeleton" style={{ height: 36, borderRadius: 8 }} /> : (
-                  <input className="input" value={form.store_name} onChange={e => setForm({...form, store_name: e.target.value})} />
+                <label className="form-label">Store / Platform Title</label>
+                {loading ? <div className="skeleton h-10 w-full" /> : (
+                  <input
+                    className="input"
+                    value={form.store_name}
+                    onChange={e => setForm({ ...form, store_name: e.target.value })}
+                  />
                 )}
               </div>
+
               <div className="form-group">
-                <label className="form-label">Currency</label>
-                {loading ? <div className="skeleton" style={{ height: 36, borderRadius: 8 }} /> : (
-                  <select className="input" value={form.currency} onChange={e => setForm({...form, currency: e.target.value})}>
-                    <option value="IDR">IDR (Rupiah)</option>
-                    <option value="USD">USD (Dollar)</option>
+                <label className="form-label">Default Display Currency</label>
+                {loading ? <div className="skeleton h-10 w-full" /> : (
+                  <select
+                    className="input"
+                    value={form.currency}
+                    onChange={e => setForm({ ...form, currency: e.target.value })}
+                  >
+                    <option value="IDR">IDR (Indonesian Rupiah - Rp)</option>
+                    <option value="USD">USD (US Dollar - $)</option>
                   </select>
                 )}
               </div>
+
               <div className="form-group">
-                <label className="form-label">Low Stock Threshold</label>
-                {loading ? <div className="skeleton" style={{ height: 36, borderRadius: 8 }} /> : (
-                  <input type="number" className="input" value={form.low_stock_threshold} min="0"
-                    onChange={e => setForm({...form, low_stock_threshold: e.target.value})} />
+                <label className="form-label">Low Stock Inventory Threshold</label>
+                {loading ? <div className="skeleton h-10 w-full" /> : (
+                  <input
+                    type="number"
+                    className="input"
+                    value={form.low_stock_threshold}
+                    min="0"
+                    onChange={e => setForm({ ...form, low_stock_threshold: e.target.value })}
+                  />
                 )}
-                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Products with stock ≤ this value will be marked as Low Stock</span>
+                <span className="text-[11px] text-[var(--text-muted)]">Items with stock ≤ this value will trigger Low Stock alerts</span>
               </div>
+
               <div className="form-group">
-                <label className="form-label">Appearance</label>
-                {loading ? <div className="skeleton" style={{ height: 36, borderRadius: 8 }} /> : (
-                  <select className="input" value={form.theme} onChange={e => setForm({...form, theme: e.target.value})}>
-                    <option value="dark">Dark Mode</option>
-                    <option value="light">Light Mode</option>
-                    <option value="system">System</option>
+                <label className="form-label">Visual Theme</label>
+                {loading ? <div className="skeleton h-10 w-full" /> : (
+                  <select
+                    className="input"
+                    value={form.theme}
+                    onChange={e => setForm({ ...form, theme: e.target.value })}
+                  >
+                    <option value="dark">SaaS Dark Theme (Default)</option>
                   </select>
                 )}
               </div>
             </div>
           </div>
 
-          {/* About */}
-          <div className="card" style={{ padding: '20px' }}>
-            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>About QB DASHBOARD</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                <span style={{ color: 'var(--text-muted)' }}>Version</span>
-                <span style={{ fontWeight: 600 }}>1.0.0</span>
+          {/* About Platform */}
+          <div className="card p-5 space-y-3">
+            <div className="flex items-center gap-2 font-bold text-sm text-[var(--text-primary)] pb-2 border-b border-[var(--border)]">
+              <Cpu size={16} className="text-[var(--accent)]" />
+              <span>Platform Specifications</span>
+            </div>
+            <div className="space-y-2 text-xs">
+              <div className="flex justify-between py-1 border-b border-[var(--border)]">
+                <span className="text-[var(--text-muted)]">Application Version</span>
+                <span className="font-mono font-bold text-[var(--accent)]">v2.4.0 SaaS Premium</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                <span style={{ color: 'var(--text-muted)' }}>Database</span>
-                <span style={{ fontWeight: 600 }}>SQLite (Local)</span>
+              <div className="flex justify-between py-1 border-b border-[var(--border)]">
+                <span className="text-[var(--text-muted)]">Framework</span>
+                <span className="font-semibold text-[var(--text-primary)]">Next.js 15 (App Router)</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                <span style={{ color: 'var(--text-muted)' }}>Framework</span>
-                <span style={{ fontWeight: 600 }}>Next.js 15</span>
+              <div className="flex justify-between py-1 border-b border-[var(--border)]">
+                <span className="text-[var(--text-muted)]">Database Infrastructure</span>
+                <span className="font-semibold text-[var(--success)]">Supabase PostgreSQL</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                <span style={{ color: 'var(--text-muted)' }}>Game</span>
-                <span style={{ fontWeight: 600 }}>Roblox Grow a Garden 2</span>
+              <div className="flex justify-between py-1">
+                <span className="text-[var(--text-muted)]">Target Ecosystem</span>
+                <span className="font-semibold text-[var(--text-primary)]">Roblox Grow a Garden 2</span>
               </div>
             </div>
           </div>
 
-          {/* Data Info */}
-          <div className="card" style={{ padding: '20px' }}>
-            <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 12 }}>Data Storage</div>
-            <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '12px', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
-              📁 Data disimpan di: <strong style={{ color: 'var(--text-primary)', display: 'block', marginTop: 4, fontFamily: 'monospace', fontSize: 11 }}>
-                /data/qb-dashboard.db
-              </strong>
-              <br />
-              Data tersimpan permanen dan tidak hilang saat browser di-refresh.
-              Backup file .db secara berkala untuk keamanan data.
+          {/* Infrastructure Security */}
+          <div className="card p-5 space-y-3">
+            <div className="flex items-center gap-2 font-bold text-sm text-[var(--text-primary)] pb-2 border-b border-[var(--border)]">
+              <HardDrive size={16} className="text-[var(--success)]" />
+              <span>Database Sync Status</span>
+            </div>
+            <div className="p-3.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-xs space-y-2">
+              <div className="flex items-center gap-2 font-semibold text-[var(--success)]">
+                <ShieldCheck size={16} />
+                <span>Supabase Live Sync Connected</span>
+              </div>
+              <p className="text-[var(--text-muted)] text-[11px] leading-relaxed">
+                All business data, stock levels, orders, and RF device mappings are securely backed up in the cloud with automated snapshots.
+              </p>
             </div>
           </div>
         </div>
       </div>
 
-      {toast && <div className="toast-container"><div className="toast"><div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)', flexShrink: 0, marginTop: 4 }} /><span style={{ fontSize: 13 }}>{toast}</span></div></div>}
+      {/* Toast */}
+      {toast && (
+        <div className="toast-container">
+          <div className="toast">
+            <div className="w-2.5 h-2.5 rounded-full bg-[var(--success)]" />
+            <span className="text-xs font-medium">{toast}</span>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

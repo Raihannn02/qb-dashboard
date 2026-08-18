@@ -1,8 +1,9 @@
 'use client';
+
 import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/app/layout-dashboard';
-import { formatCurrency, formatDateTime } from '@/lib/utils';
-import { Boxes, Search, X, ChevronLeft, ChevronRight, Plus, ArrowUpDown } from 'lucide-react';
+import { formatCurrency } from '@/lib/utils';
+import { Boxes, Search, X, ChevronLeft, ChevronRight, ArrowUpDown, AlertTriangle, CheckCircle, Package } from 'lucide-react';
 
 const CATEGORIES = ['Fruit', 'Pet', 'Egg', 'Gear', 'Sprinkler', 'Tool', 'Variant', 'Other'];
 const STOCK_STATUSES = ['In Stock', 'Low Stock', 'Out of Stock'];
@@ -19,7 +20,7 @@ export default function InventoryPage() {
   const [adjustForm, setAdjustForm] = useState({ type: 'Stock In', quantity: '', notes: '' });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const limit = 20;
+  const limit = 15;
 
   const showToastMsg = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
@@ -39,7 +40,7 @@ export default function InventoryPage() {
   useEffect(() => { fetchInventory(); }, [fetchInventory]);
 
   const handleAdjust = async () => {
-    if (!adjustForm.quantity) return;
+    if (!adjustForm.quantity || parseInt(adjustForm.quantity) <= 0) return;
     setSaving(true);
     try {
       const res = await fetch('/api/stock-movements', {
@@ -48,7 +49,7 @@ export default function InventoryPage() {
         body: JSON.stringify({ product_id: showAdjust.id, ...adjustForm, quantity: parseInt(adjustForm.quantity) }),
       });
       if (res.ok) {
-        showToastMsg(`Stock adjusted for ${showAdjust.name}`);
+        showToastMsg(`Stock updated for "${showAdjust.name}"`);
         setShowAdjust(null);
         fetchInventory();
       }
@@ -62,135 +63,284 @@ export default function InventoryPage() {
   };
 
   const totalPages = Math.ceil(total / limit);
+  const totalStockUnits = inventory.reduce((sum, i) => sum + (i.current_stock || 0), 0);
   const totalStockValue = inventory.reduce((sum, i) => sum + (i.stock_value || 0), 0);
+  const lowStockItems = inventory.filter(i => i.stock_status === 'Low Stock').length;
+  const outOfStockItems = inventory.filter(i => i.stock_status === 'Out of Stock').length;
+
+  // Calculate math preview for adjustment
+  const currentVal = showAdjust?.current_stock || 0;
+  const qtyVal = parseInt(adjustForm.quantity) || 0;
+  let newCalculatedStock = currentVal;
+  if (adjustForm.type === 'Stock In' || adjustForm.type === 'Return') {
+    newCalculatedStock = currentVal + qtyVal;
+  } else if (adjustForm.type === 'Stock Out') {
+    newCalculatedStock = Math.max(0, currentVal - qtyVal);
+  } else if (adjustForm.type === 'Adjustment' || adjustForm.type === 'Correction') {
+    newCalculatedStock = qtyVal;
+  }
 
   return (
     <DashboardLayout>
       <div className="page-content">
+        {/* Header */}
         <div className="page-header">
           <div>
-            <h1 className="page-title">Inventory</h1>
-            <div className="page-subtitle">Current stock levels — {total} products</div>
+            <h1 className="page-title">Stock Management</h1>
+            <div className="page-subtitle">Real-time inventory levels and warehouse stock adjustments</div>
           </div>
-          <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, padding: '8px 16px', textAlign: 'right' }}>
-            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>Total Stock Value</div>
-            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--success)' }}>{formatCurrency(totalStockValue)}</div>
+        </div>
+
+        {/* KPI Cards */}
+        <div className="stats-grid mb-6">
+          <div className="stat-card">
+            <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
+              <span>Total Units in Stock</span>
+              <Boxes size={16} className="text-[var(--accent)]" />
+            </div>
+            <div className="text-2xl font-bold text-[var(--text-primary)]">{totalStockUnits.toLocaleString()}</div>
+            <div className="text-[11px] text-[var(--text-muted)] mt-1">Across all active items</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
+              <span>Stock Asset Value</span>
+              <Package size={16} className="text-[var(--success)]" />
+            </div>
+            <div className="text-2xl font-bold text-[var(--success)]">{formatCurrency(totalStockValue)}</div>
+            <div className="text-[11px] text-[var(--text-muted)] mt-1">Based on default prices</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
+              <span>Low Stock Items</span>
+              <AlertTriangle size={16} className="text-[var(--warning)]" />
+            </div>
+            <div className="text-2xl font-bold text-[var(--warning)]">{lowStockItems}</div>
+            <div className="text-[11px] text-[var(--text-muted)] mt-1">Requires reorder</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
+              <span>Out of Stock</span>
+              <X size={16} className="text-[var(--danger)]" />
+            </div>
+            <div className="text-2xl font-bold text-[var(--danger)]">{outOfStockItems}</div>
+            <div className="text-[11px] text-[var(--text-muted)] mt-1">0 units remaining</div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="card" style={{ padding: '12px 16px', marginBottom: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <div className="search-bar" style={{ flex: 1, minWidth: 200 }}>
-            <Search size={14} color="var(--text-muted)" />
-            <input placeholder="Search product..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-            {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={13} /></button>}
+        <div className="card p-3 mb-4 flex gap-3 flex-wrap items-center">
+          <div className="search-bar flex-1 min-w-[240px]">
+            <Search size={15} className="text-[var(--text-muted)]" />
+            <input
+              placeholder="Search product code or name..."
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="text-[var(--text-muted)] hover:text-white">
+                <X size={14} />
+              </button>
+            )}
           </div>
-          <select value={category} onChange={e => { setCategory(e.target.value); setPage(1); }} className="input" style={{ width: 'auto' }}>
+
+          <select
+            value={category}
+            onChange={e => { setCategory(e.target.value); setPage(1); }}
+            className="input w-auto h-9 text-xs"
+          >
             <option value="">All Categories</option>
             {CATEGORIES.map(c => <option key={c}>{c}</option>)}
           </select>
-          <select value={stockStatus} onChange={e => { setStockStatus(e.target.value); setPage(1); }} className="input" style={{ width: 'auto' }}>
+
+          <select
+            value={stockStatus}
+            onChange={e => { setStockStatus(e.target.value); setPage(1); }}
+            className="input w-auto h-9 text-xs"
+          >
             <option value="">All Stock Status</option>
             {STOCK_STATUSES.map(s => <option key={s}>{s}</option>)}
           </select>
         </div>
 
-        <div className="card" style={{ overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto' }}>
+        {/* Data Table */}
+        <div className="data-table-container">
+          <div className="overflow-x-auto">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Code</th><th>Product</th><th>Category</th>
-                  <th style={{ textAlign: 'right' }}>Stock</th>
-                  <th style={{ textAlign: 'right' }}>Price</th>
-                  <th style={{ textAlign: 'right' }}>Stock Value</th>
-                  <th>Status</th><th style={{ textAlign: 'center' }}>Adjust</th>
+                  <th>Code</th>
+                  <th>Product</th>
+                  <th>Category</th>
+                  <th className="text-right">Stock</th>
+                  <th className="text-right">Unit Price</th>
+                  <th className="text-right">Stock Value</th>
+                  <th>Status</th>
+                  <th className="text-center w-24">Adjust</th>
                 </tr>
               </thead>
               <tbody>
-                {loading ? Array.from({ length: 10 }).map((_, i) => (
-                  <tr key={i}>{Array.from({ length: 8 }).map((_, j) => <td key={j}><div className="skeleton" style={{ height: 16, borderRadius: 4 }} /></td>)}</tr>
-                )) : inventory.length === 0 ? (
-                  <tr><td colSpan={8}>
-                    <div className="empty-state">
-                      <Boxes size={36} className="empty-state-icon" />
-                      <h3>No Inventory Data</h3>
-                      <p>Add products to see inventory here.</p>
-                    </div>
-                  </td></tr>
-                ) : inventory.map(item => (
-                  <tr key={item.id}>
-                    <td className="muted" style={{ fontFamily: 'monospace', fontSize: 12 }}>{item.product_code}</td>
-                    <td style={{ fontWeight: 500 }}>{item.name}</td>
-                    <td><span className="badge badge-inactive">{item.category}</span></td>
-                    <td style={{ textAlign: 'right', fontWeight: 700, color: item.current_stock === 0 ? 'var(--danger)' : item.stock_status === 'Low Stock' ? 'var(--warning)' : 'var(--success)' }}>
-                      {item.current_stock}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>{formatCurrency(item.default_price)}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 600 }}>{formatCurrency(item.stock_value)}</td>
-                    <td><span className={stockBadge(item.stock_status)}>{item.stock_status}</span></td>
-                    <td style={{ textAlign: 'center' }}>
-                      <button onClick={() => { setShowAdjust(item); setAdjustForm({ type: 'Stock In', quantity: '', notes: '' }); }}
-                        className="btn btn-secondary btn-icon btn-sm" title="Adjust Stock">
-                        <ArrowUpDown size={12} />
-                      </button>
+                {loading ? (
+                  Array.from({ length: 10 }).map((_, i) => (
+                    <tr key={i}>
+                      {Array.from({ length: 8 }).map((_, j) => (
+                        <td key={j}><div className="skeleton h-4 w-full" /></td>
+                      ))}
+                    </tr>
+                  ))
+                ) : inventory.length === 0 ? (
+                  <tr>
+                    <td colSpan={8}>
+                      <div className="empty-state py-12">
+                        <Boxes size={40} className="empty-state-icon" />
+                        <h3 className="font-bold text-sm">No Stock Records</h3>
+                        <p className="text-xs text-[var(--text-muted)]">No inventory matched your filter search.</p>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  inventory.map(item => (
+                    <tr key={item.id}>
+                      <td className="font-mono text-xs text-[var(--text-muted)]">{item.product_code}</td>
+                      <td className="font-semibold text-[var(--text-primary)]">{item.name}</td>
+                      <td><span className="badge badge-inactive">{item.category}</span></td>
+                      <td className={`text-right font-bold ${
+                        item.current_stock === 0 ? 'text-[var(--danger)]' : item.stock_status === 'Low Stock' ? 'text-[var(--warning)]' : 'text-[var(--text-primary)]'
+                      }`}>
+                        {item.current_stock} {item.unit || 'pcs'}
+                      </td>
+                      <td className="text-right text-[var(--text-secondary)]">{formatCurrency(item.default_price)}</td>
+                      <td className="text-right font-semibold text-[var(--success)]">{formatCurrency(item.stock_value)}</td>
+                      <td><span className={stockBadge(item.stock_status)}>{item.stock_status}</span></td>
+                      <td className="text-center">
+                        <button
+                          onClick={() => {
+                            setShowAdjust(item);
+                            setAdjustForm({ type: 'Stock In', quantity: '', notes: '' });
+                          }}
+                          className="btn btn-secondary btn-icon btn-sm"
+                          title="Adjust Stock Level"
+                        >
+                          <ArrowUpDown size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
+
           {totalPages > 1 && (
-            <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Page {page} of {totalPages}</span>
+            <div className="px-4 py-3 border-t border-[var(--border)] flex items-center justify-between text-xs text-[var(--text-muted)] bg-[var(--bg-secondary)]">
+              <span>Page {page} of {totalPages}</span>
               <div className="pagination">
-                <button className="page-btn" onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}><ChevronLeft size={14} /></button>
-                <button className="page-btn" onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages}><ChevronRight size={14} /></button>
+                <button className="page-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                  <ChevronLeft size={14} />
+                </button>
+                <button className="page-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+                  <ChevronRight size={14} />
+                </button>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Adjust Modal */}
+      {/* Stock Adjust Modal with Math Preview */}
       {showAdjust && (
         <div className="modal-overlay" onClick={() => setShowAdjust(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+          <div className="modal max-w-md" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 style={{ fontSize: 16, fontWeight: 700 }}>Adjust Stock</h2>
-              <button onClick={() => setShowAdjust(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
+              <h2 className="text-base font-bold text-[var(--text-primary)]">Adjust Inventory Stock</h2>
+              <button onClick={() => setShowAdjust(null)} className="btn btn-ghost btn-icon">
+                <X size={18} />
+              </button>
             </div>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ background: 'var(--bg-secondary)', borderRadius: 8, padding: '10px 14px' }}>
-                <div style={{ fontWeight: 600 }}>{showAdjust.name}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Current Stock: <strong style={{ color: 'var(--text-primary)' }}>{showAdjust.current_stock}</strong></div>
+
+            <div className="modal-body space-y-4">
+              <div className="p-3.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)]">
+                <div className="font-bold text-sm text-[var(--text-primary)]">{showAdjust.name}</div>
+                <div className="text-xs text-[var(--text-muted)]">Code: {showAdjust.product_code}</div>
               </div>
+
               <div className="form-group">
-                <label className="form-label">Type</label>
-                <select className="input" value={adjustForm.type} onChange={e => setAdjustForm({...adjustForm, type: e.target.value})}>
-                  <option>Stock In</option><option>Stock Out</option><option>Adjustment</option><option>Return</option><option>Correction</option>
+                <label className="form-label">Movement Type</label>
+                <select
+                  className="input"
+                  value={adjustForm.type}
+                  onChange={e => setAdjustForm({ ...adjustForm, type: e.target.value })}
+                >
+                  <option value="Stock In">Stock In (Receive + Add)</option>
+                  <option value="Stock Out">Stock Out (Deduct)</option>
+                  <option value="Adjustment">Set Exact Stock</option>
+                  <option value="Return">Customer Return (+ Add)</option>
                 </select>
               </div>
+
               <div className="form-group">
                 <label className="form-label">Quantity</label>
-                <input className="input" type="number" value={adjustForm.quantity} onChange={e => setAdjustForm({...adjustForm, quantity: e.target.value})} min="0" placeholder="Enter quantity" />
+                <input
+                  className="input"
+                  type="number"
+                  value={adjustForm.quantity}
+                  onChange={e => setAdjustForm({ ...adjustForm, quantity: e.target.value })}
+                  min="1"
+                  placeholder="Enter amount..."
+                />
               </div>
+
+              {/* Math Preview Box */}
+              {qtyVal > 0 && (
+                <div className="p-3.5 rounded-xl bg-[var(--accent-light)] border border-[var(--accent-glow)] text-xs space-y-1">
+                  <div className="font-bold text-[var(--accent)] mb-1">Stock Math Preview</div>
+                  <div className="flex justify-between">
+                    <span className="text-[var(--text-muted)]">Current Stock:</span>
+                    <span>{currentVal}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[var(--text-muted)]">Movement ({adjustForm.type}):</span>
+                    <span>{adjustForm.type === 'Stock Out' ? `-${qtyVal}` : `+${qtyVal}`}</span>
+                  </div>
+                  <div className="flex justify-between border-t border-[var(--border)] pt-1.5 font-bold text-sm text-[var(--text-primary)]">
+                    <span>New Stock Level:</span>
+                    <span className="text-[var(--success)]">{newCalculatedStock} units</span>
+                  </div>
+                </div>
+              )}
+
               <div className="form-group">
-                <label className="form-label">Notes</label>
-                <textarea className="input" value={adjustForm.notes} onChange={e => setAdjustForm({...adjustForm, notes: e.target.value})} rows={2} placeholder="Optional reason..." />
+                <label className="form-label">Reason / Notes</label>
+                <textarea
+                  className="input h-16 py-2 resize-none"
+                  value={adjustForm.notes}
+                  onChange={e => setAdjustForm({ ...adjustForm, notes: e.target.value })}
+                  placeholder="e.g. Restock from supplier / Damaged item..."
+                />
               </div>
             </div>
+
             <div className="modal-footer">
               <button onClick={() => setShowAdjust(null)} className="btn btn-secondary">Cancel</button>
               <button onClick={handleAdjust} disabled={saving || !adjustForm.quantity} className="btn btn-primary">
-                {saving ? 'Saving...' : 'Apply Adjustment'}
+                {saving ? 'Saving...' : 'Apply Stock Adjustment'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {toast && <div className="toast-container"><div className="toast"><div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)', flexShrink: 0, marginTop: 4 }} /><span style={{ fontSize: 13 }}>{toast}</span></div></div>}
+      {/* Toast Notification */}
+      {toast && (
+        <div className="toast-container">
+          <div className="toast">
+            <CheckCircle size={16} className="text-[var(--success)] shrink-0" />
+            <span className="text-xs font-medium">{toast}</span>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

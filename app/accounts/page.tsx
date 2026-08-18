@@ -1,12 +1,15 @@
 'use client';
+
 import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/app/layout-dashboard';
-import { Users, Search, X, Plus, Check, Edit2, Trash2 } from 'lucide-react';
+import { Users, Search, X, Plus, Check, Edit2, Trash2, ShieldCheck, AlertCircle } from 'lucide-react';
 
 const ACCOUNT_STATUSES = ['Logged In', 'Belum Login', 'Problem', 'Maintenance'];
 const STATUS_BADGE: Record<string, string> = {
-  'Logged In': 'badge badge-logged-in', 'Belum Login': 'badge badge-belum-login',
-  'Problem': 'badge badge-problem', 'Maintenance': 'badge badge-maintenance',
+  'Logged In': 'badge badge-logged-in',
+  'Belum Login': 'badge badge-belum-login',
+  'Problem': 'badge badge-problem',
+  'Maintenance': 'badge badge-maintenance',
 };
 
 export default function AccountsPage() {
@@ -25,19 +28,22 @@ export default function AccountsPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const params = new URLSearchParams({ search, rf_id: rfFilter });
-    const [accRes, rfRes] = await Promise.all([
-      fetch(`/api/accounts?${params}`),
-      fetch('/api/rf-devices'),
-    ]);
-    if (accRes.ok) { const d = await accRes.json(); setAccounts(d.accounts || []); }
-    if (rfRes.ok) { const d = await rfRes.json(); setRfDevices(d.rfDevices || []); }
-    setLoading(false);
+    try {
+      const params = new URLSearchParams({ search, rf_id: rfFilter });
+      const [accRes, rfRes] = await Promise.all([
+        fetch(`/api/accounts?${params}`),
+        fetch('/api/rf-devices'),
+      ]);
+      if (accRes.ok) { const d = await accRes.json(); setAccounts(d.accounts || []); }
+      if (rfRes.ok) { const d = await rfRes.json(); setRfDevices(d.rfDevices || []); }
+    } finally {
+      setLoading(false);
+    }
   }, [search, rfFilter]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Group accounts by RF
+  // Group accounts by RF device
   const grouped = rfDevices.map(rf => ({
     rf,
     accounts: accounts.filter(a => a.rf_device_id === rf.id),
@@ -47,14 +53,14 @@ export default function AccountsPage() {
     if (!addForm.rf_device_id || !addForm.username) { showToast('RF device and username required'); return; }
     setSaving(true);
     const res = await fetch('/api/accounts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(addForm) });
-    if (res.ok) { showToast('Account added!'); setShowAdd(false); setAddForm({ rf_device_id: '', username: '', status: 'Logged In', notes: '' }); fetchData(); }
+    if (res.ok) { showToast('Account added successfully'); setShowAdd(false); setAddForm({ rf_device_id: '', username: '', status: 'Logged In', notes: '' }); fetchData(); }
     setSaving(false);
   };
 
   const handleEdit = async () => {
     if (!editAcc) return;
     const res = await fetch('/api/accounts', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: editAcc.id, status: editAcc.status, notes: editAcc.notes }) });
-    if (res.ok) { showToast('Account updated!'); setEditAcc(null); fetchData(); }
+    if (res.ok) { showToast('Account updated successfully'); setEditAcc(null); fetchData(); }
   };
 
   const handleDelete = async (acc: any) => {
@@ -66,60 +72,110 @@ export default function AccountsPage() {
   return (
     <DashboardLayout>
       <div className="page-content">
+        {/* Header */}
         <div className="page-header">
           <div>
             <h1 className="page-title">Roblox Accounts</h1>
-            <div className="page-subtitle">{accounts.length} total accounts across {rfDevices.length} RF devices</div>
+            <div className="page-subtitle">{accounts.length} total accounts mapped across {rfDevices.length} RedFinger devices</div>
           </div>
-          <button onClick={() => setShowAdd(true)} className="btn btn-primary"><Plus size={14} /> Add Account</button>
+          <button onClick={() => setShowAdd(true)} className="btn btn-primary">
+            <Plus size={16} /> Add Account
+          </button>
         </div>
 
-        <div className="card" style={{ padding: '12px 16px', marginBottom: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <div className="search-bar" style={{ flex: 1, minWidth: 180 }}>
-            <Search size={14} color="var(--text-muted)" />
-            <input placeholder="Search username..." value={search} onChange={e => setSearch(e.target.value)} />
-            {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={13} /></button>}
-          </div>
-          <select value={rfFilter} onChange={e => setRfFilter(e.target.value)} className="input" style={{ width: 'auto' }}>
-            <option value="">All RF Devices</option>
-            {rfDevices.map(rf => <option key={rf.id} value={rf.id}>{rf.name}</option>)}
-          </select>
+        {/* Device Quick Filter Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4">
+          <button
+            onClick={() => setRfFilter('')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border ${
+              rfFilter === ''
+                ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                : 'bg-[var(--bg-card)] border-[var(--border)] text-[var(--text-secondary)] hover:text-white'
+            }`}
+          >
+            All Devices ({rfDevices.length})
+          </button>
+          {rfDevices.map(rf => (
+            <button
+              key={rf.id}
+              onClick={() => setRfFilter(rf.id)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all border ${
+                rfFilter === rf.id
+                  ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                  : 'bg-[var(--bg-card)] border-[var(--border)] text-[var(--text-secondary)] hover:text-white'
+              }`}
+            >
+              {rf.name} ({rf.account_count || 0})
+            </button>
+          ))}
         </div>
 
+        {/* Search */}
+        <div className="card p-3 mb-6 flex gap-3 items-center">
+          <div className="search-bar flex-1">
+            <Search size={15} className="text-[var(--text-muted)]" />
+            <input
+              placeholder="Search by Roblox username..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="text-[var(--text-muted)] hover:text-white">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Grouped Account Cards Grid */}
         {loading ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
-            {Array.from({ length: 6 }).map((_, i) => <div key={i} className="skeleton" style={{ height: 200, borderRadius: 12 }} />)}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="skeleton h-56 w-full" />
+            ))}
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {grouped.map(({ rf, accounts: rfAccounts }) => (
-              <div key={rf.id} className="card" style={{ padding: '16px', overflow: 'hidden' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, paddingBottom: 12, borderBottom: '1px solid var(--border)' }}>
+              <div key={rf.id} className="card p-4 flex flex-col justify-between overflow-hidden">
+                <div className="flex items-center justify-between pb-3 mb-3 border-b border-[var(--border)]">
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 15 }}>{rf.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{rfAccounts.length} accounts</div>
+                    <h3 className="font-bold text-sm text-[var(--text-primary)]">{rf.name}</h3>
+                    <span className="text-[10px] text-[var(--text-muted)]">{rfAccounts.length} accounts mapped</span>
                   </div>
-                  <span className={`badge ${rf.status === 'Active' ? 'badge-active' : rf.status === 'Offline' ? 'badge-out-of-stock' : 'badge-maintenance'}`}>
+                  <span className={rf.status === 'Active' ? 'badge badge-active' : 'badge badge-inactive'}>
                     {rf.status}
                   </span>
                 </div>
 
                 {rfAccounts.length === 0 ? (
-                  <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>No accounts</div>
+                  <div className="py-8 text-center text-xs text-[var(--text-muted)]">
+                    No Roblox accounts mapped to this device
+                  </div>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                  <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
                     {rfAccounts.map(acc => (
-                      <div key={acc.id} style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '6px 8px', borderRadius: 6, transition: 'background 0.15s',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-secondary)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                        <span style={{ fontSize: 13, fontFamily: 'monospace', color: 'var(--text-primary)' }}>{acc.username}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span className={STATUS_BADGE[acc.status] || 'badge badge-inactive'} style={{ fontSize: 10 }}>{acc.status}</span>
-                          <button onClick={() => setEditAcc({ ...acc })} className="btn btn-icon btn-sm btn-secondary" style={{ padding: '2px 4px' }}><Edit2 size={10} /></button>
-                          <button onClick={() => handleDelete(acc)} className="btn btn-icon btn-sm" style={{ padding: '2px 4px', background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.2)' }}><Trash2 size={10} /></button>
+                      <div
+                        key={acc.id}
+                        className="flex items-center justify-between p-2 rounded-lg bg-[var(--bg-secondary)] border border-[var(--border)] text-xs group"
+                      >
+                        <span className="font-mono font-medium text-[var(--text-primary)]">{acc.username}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={STATUS_BADGE[acc.status] || 'badge badge-inactive'}>{acc.status}</span>
+                          <button
+                            onClick={() => setEditAcc({ ...acc })}
+                            className="text-[var(--text-muted)] hover:text-white p-1"
+                            title="Edit Account Status"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(acc)}
+                            className="text-[var(--text-muted)] hover:text-[var(--danger)] p-1"
+                            title="Delete"
+                          >
+                            <Trash2 size={12} />
+                          </button>
                         </div>
                       </div>
                     ))}
@@ -131,77 +187,124 @@ export default function AccountsPage() {
         )}
       </div>
 
-      {/* Add Modal */}
+      {/* Add Account Modal */}
       {showAdd && (
         <div className="modal-overlay" onClick={() => setShowAdd(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+          <div className="modal max-w-sm" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 style={{ fontSize: 16, fontWeight: 700 }}>Add Roblox Account</h2>
-              <button onClick={() => setShowAdd(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
+              <h2 className="text-base font-bold text-[var(--text-primary)]">Add Roblox Account</h2>
+              <button onClick={() => setShowAdd(false)} className="btn btn-ghost btn-icon">
+                <X size={18} />
+              </button>
             </div>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="modal-body space-y-4">
               <div className="form-group">
-                <label className="form-label">RF Device *</label>
-                <select className="input" value={addForm.rf_device_id} onChange={e => setAddForm({...addForm, rf_device_id: e.target.value})}>
-                  <option value="">Select RF...</option>
+                <label className="form-label">RedFinger Device *</label>
+                <select
+                  className="input"
+                  value={addForm.rf_device_id}
+                  onChange={e => setAddForm({ ...addForm, rf_device_id: e.target.value })}
+                >
+                  <option value="">Select RF Device...</option>
                   {rfDevices.map(rf => <option key={rf.id} value={rf.id}>{rf.name}</option>)}
                 </select>
               </div>
+
               <div className="form-group">
-                <label className="form-label">Username *</label>
-                <input className="input" value={addForm.username} onChange={e => setAddForm({...addForm, username: e.target.value})} placeholder="Roblox username" />
+                <label className="form-label">Roblox Username *</label>
+                <input
+                  className="input"
+                  value={addForm.username}
+                  onChange={e => setAddForm({ ...addForm, username: e.target.value })}
+                  placeholder="e.g. Farmer_Pro99"
+                />
               </div>
+
               <div className="form-group">
-                <label className="form-label">Status</label>
-                <select className="input" value={addForm.status} onChange={e => setAddForm({...addForm, status: e.target.value})}>
+                <label className="form-label">Account Status</label>
+                <select
+                  className="input"
+                  value={addForm.status}
+                  onChange={e => setAddForm({ ...addForm, status: e.target.value })}
+                >
                   {ACCOUNT_STATUSES.map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
+
               <div className="form-group">
                 <label className="form-label">Notes</label>
-                <input className="input" value={addForm.notes} onChange={e => setAddForm({...addForm, notes: e.target.value})} placeholder="Optional" />
+                <input
+                  className="input"
+                  value={addForm.notes}
+                  onChange={e => setAddForm({ ...addForm, notes: e.target.value })}
+                  placeholder="Optional details"
+                />
               </div>
-              <div style={{ background: 'var(--warning-bg)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: 'var(--warning)' }}>
-                ⚠ Jangan simpan password Roblox di sini. Hanya username.
+
+              <div className="p-3 rounded-lg bg-[var(--warning-bg)] border border-amber-500/20 text-amber-400 text-xs flex items-center gap-2">
+                <ShieldCheck size={16} className="shrink-0" />
+                <span>Security Notice: Never enter Roblox passwords here. Usernames only.</span>
               </div>
             </div>
             <div className="modal-footer">
               <button onClick={() => setShowAdd(false)} className="btn btn-secondary">Cancel</button>
-              <button onClick={handleAdd} disabled={saving} className="btn btn-primary"><Check size={14} /> {saving ? 'Adding...' : 'Add Account'}</button>
+              <button onClick={handleAdd} disabled={saving} className="btn btn-primary">
+                <Check size={16} /> {saving ? 'Adding...' : 'Add Account'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* Edit Account Modal */}
       {editAcc && (
         <div className="modal-overlay" onClick={() => setEditAcc(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 380 }}>
+          <div className="modal max-w-sm" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 style={{ fontSize: 16, fontWeight: 700 }}>Edit: {editAcc.username}</h2>
-              <button onClick={() => setEditAcc(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
+              <h2 className="text-base font-bold text-[var(--text-primary)]">Edit {editAcc.username}</h2>
+              <button onClick={() => setEditAcc(null)} className="btn btn-ghost btn-icon">
+                <X size={18} />
+              </button>
             </div>
-            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="modal-body space-y-4">
               <div className="form-group">
                 <label className="form-label">Status</label>
-                <select className="input" value={editAcc.status} onChange={e => setEditAcc({...editAcc, status: e.target.value})}>
+                <select
+                  className="input"
+                  value={editAcc.status}
+                  onChange={e => setEditAcc({ ...editAcc, status: e.target.value })}
+                >
                   {ACCOUNT_STATUSES.map(s => <option key={s}>{s}</option>)}
                 </select>
               </div>
               <div className="form-group">
                 <label className="form-label">Notes</label>
-                <input className="input" value={editAcc.notes || ''} onChange={e => setEditAcc({...editAcc, notes: e.target.value})} />
+                <input
+                  className="input"
+                  value={editAcc.notes || ''}
+                  onChange={e => setEditAcc({ ...editAcc, notes: e.target.value })}
+                />
               </div>
             </div>
             <div className="modal-footer">
               <button onClick={() => setEditAcc(null)} className="btn btn-secondary">Cancel</button>
-              <button onClick={handleEdit} className="btn btn-primary"><Check size={14} /> Save</button>
+              <button onClick={handleEdit} className="btn btn-primary">
+                <Check size={16} /> Save Changes
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {toast && <div className="toast-container"><div className="toast"><div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--success)', flexShrink: 0, marginTop: 4 }} /><span style={{ fontSize: 13 }}>{toast}</span></div></div>}
+      {/* Toast */}
+      {toast && (
+        <div className="toast-container">
+          <div className="toast">
+            <div className="w-2.5 h-2.5 rounded-full bg-[var(--success)]" />
+            <span className="text-xs font-medium">{toast}</span>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }

@@ -1,15 +1,21 @@
 'use client';
+
 import { useState, useEffect, useCallback } from 'react';
 import DashboardLayout from '@/app/layout-dashboard';
 import { formatCurrency, formatPercent, formatDateTime } from '@/lib/utils';
-import { ShoppingCart, Plus, Search, X, ChevronLeft, ChevronRight, Edit2, Check, Trash2 } from 'lucide-react';
+import {
+  ShoppingCart, Plus, Search, X, ChevronLeft, ChevronRight, Edit2, Check, Trash2,
+  MoreVertical, Eye, TrendingUp, DollarSign, Clock, CheckCircle2, ShieldAlert
+} from 'lucide-react';
 
 const PLATFORMS = ['G2G', 'Itemku', 'Discord', 'Direct', 'Other'];
 const STATUSES = ['Pending', 'Processing', 'Completed', 'Cancelled'];
 
 const STATUS_BADGE: Record<string, string> = {
-  Pending: 'badge badge-pending', Processing: 'badge badge-processing',
-  Completed: 'badge badge-completed', Cancelled: 'badge badge-cancelled',
+  Pending: 'badge badge-pending',
+  Processing: 'badge badge-processing',
+  Completed: 'badge badge-completed',
+  Cancelled: 'badge badge-cancelled',
 };
 
 export default function TransactionsPage() {
@@ -25,13 +31,21 @@ export default function TransactionsPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editTx, setEditTx] = useState<any>(null);
-  const [form, setForm] = useState({ product_id: '', quantity: '1', unit_price: '0', hpp: '0', platform: 'Direct', buyer_username: '', status: 'Pending', notes: '' });
+  const [selectedDrawerTx, setSelectedDrawerTx] = useState<any>(null);
+  const [form, setForm] = useState({
+    product_id: '', quantity: '1', unit_price: '0', hpp: '0', platform: 'Direct',
+    buyer_username: '', status: 'Pending', notes: ''
+  });
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<any>(null);
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string, type?: string } | null>(null);
   const limit = 15;
 
-  const showToast = (msg: string, type = 'success') => { setToast({ msg, type }); setTimeout(() => setToast(null), 3000); };
+  const showToast = (msg: string, type = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   const fetchTransactions = useCallback(async () => {
     setLoading(true);
@@ -48,7 +62,10 @@ export default function TransactionsPage() {
 
   const fetchProducts = async () => {
     const res = await fetch('/api/products?status=Active&limit=200');
-    if (res.ok) { const data = await res.json(); setProducts(data.products || []); }
+    if (res.ok) {
+      const data = await res.json();
+      setProducts(data.products || []);
+    }
   };
 
   useEffect(() => { fetchTransactions(); }, [fetchTransactions]);
@@ -68,6 +85,7 @@ export default function TransactionsPage() {
       status: tx.status, notes: tx.notes || '',
     });
     setShowForm(true);
+    setActiveMenuId(null);
   };
 
   const onProductChange = (id: string) => {
@@ -88,7 +106,7 @@ export default function TransactionsPage() {
         method, headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, quantity: parseInt(form.quantity), unit_price: parseFloat(form.unit_price), hpp: parseFloat(form.hpp) }),
       });
-      if (res.ok) { showToast(editTx ? 'Transaction updated!' : 'Transaction added!'); setShowForm(false); fetchTransactions(); }
+      if (res.ok) { showToast(editTx ? 'Transaction updated' : 'Transaction created'); setShowForm(false); fetchTransactions(); }
       else { const e = await res.json(); showToast(e.error || 'Failed', 'error'); }
     } finally { setSaving(false); }
   };
@@ -104,215 +122,490 @@ export default function TransactionsPage() {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus }),
     });
-    if (res.ok) { showToast(`Status → ${newStatus}`); fetchTransactions(); }
+    if (res.ok) { showToast(`Status updated to ${newStatus}`); fetchTransactions(); }
   };
 
   const totalPages = Math.ceil(total / limit);
 
+  // Summary Metrics
+  const grossSalesSum = transactions.reduce((sum, t) => sum + (t.total || 0), 0);
+  const profitSum = transactions.reduce((sum, t) => sum + (t.profit || 0), 0);
+  const pendingOrdersCount = transactions.filter(t => t.status === 'Pending' || t.status === 'Processing').length;
+
   return (
     <DashboardLayout>
       <div className="page-content">
+        {/* Header */}
         <div className="page-header">
           <div>
-            <h1 className="page-title">Transactions</h1>
-            <div className="page-subtitle">{total} total transactions</div>
+            <h1 className="page-title">Sales Transactions</h1>
+            <div className="page-subtitle">Track customer orders, sales channels, and snapshot pricing</div>
           </div>
-          <button onClick={openAdd} className="btn btn-primary"><Plus size={14} /> New Transaction</button>
+          <button onClick={openAdd} className="btn btn-primary">
+            <Plus size={16} /> New Transaction
+          </button>
         </div>
 
-        <div className="card" style={{ padding: '12px 16px', marginBottom: 16, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <div className="search-bar" style={{ flex: 1, minWidth: 180 }}>
-            <Search size={14} color="var(--text-muted)" />
-            <input placeholder="Search..." value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} />
-            {search && <button onClick={() => setSearch('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}><X size={13} /></button>}
+        {/* Metric Summary Cards */}
+        <div className="stats-grid mb-6">
+          <div className="stat-card">
+            <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
+              <span>Total Orders</span>
+              <ShoppingCart size={16} className="text-[var(--accent)]" />
+            </div>
+            <div className="text-2xl font-bold text-[var(--text-primary)]">{total}</div>
+            <div className="text-[11px] text-[var(--text-muted)] mt-1">Recorded sales transactions</div>
           </div>
-          <select value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} className="input" style={{ width: 'auto' }}>
-            <option value="">All Status</option>{STATUSES.map(s => <option key={s}>{s}</option>)}
-          </select>
-          <select value={platform} onChange={e => { setPlatform(e.target.value); setPage(1); }} className="input" style={{ width: 'auto' }}>
-            <option value="">All Platforms</option>{PLATFORMS.map(p => <option key={p}>{p}</option>)}
-          </select>
-          <input type="date" className="input" style={{ width: 'auto' }} value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1); }} />
-          <input type="date" className="input" style={{ width: 'auto' }} value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1); }} />
+
+          <div className="stat-card">
+            <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
+              <span>Gross Sales (Current View)</span>
+              <DollarSign size={16} className="text-[var(--success)]" />
+            </div>
+            <div className="text-2xl font-bold text-[var(--success)]">{formatCurrency(grossSalesSum)}</div>
+            <div className="text-[11px] text-[var(--text-muted)] mt-1">Total revenue collected</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
+              <span>Total Net Profit</span>
+              <TrendingUp size={16} className="text-[var(--accent)]" />
+            </div>
+            <div className="text-2xl font-bold text-[var(--accent)]">{formatCurrency(profitSum)}</div>
+            <div className="text-[11px] text-[var(--text-muted)] mt-1">After snapshot HPP</div>
+          </div>
+
+          <div className="stat-card">
+            <div className="flex items-center justify-between text-xs text-[var(--text-secondary)] mb-2">
+              <span>Pending Delivery</span>
+              <Clock size={16} className="text-[var(--warning)]" />
+            </div>
+            <div className="text-2xl font-bold text-[var(--warning)]">{pendingOrdersCount}</div>
+            <div className="text-[11px] text-[var(--text-muted)] mt-1">Awaiting completion</div>
+          </div>
         </div>
 
-        <div className="card" style={{ overflow: 'hidden' }}>
-          <div style={{ overflowX: 'auto' }}>
+        {/* Filters */}
+        <div className="card p-3 mb-4 flex gap-3 flex-wrap items-center">
+          <div className="search-bar flex-1 min-w-[220px]">
+            <Search size={15} className="text-[var(--text-muted)]" />
+            <input
+              placeholder="Search code, product, or buyer..."
+              value={search}
+              onChange={e => { setSearch(e.target.value); setPage(1); }}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} className="text-[var(--text-muted)] hover:text-white">
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          <select
+            value={status}
+            onChange={e => { setStatus(e.target.value); setPage(1); }}
+            className="input w-auto h-9 text-xs"
+          >
+            <option value="">All Statuses</option>
+            {STATUSES.map(s => <option key={s}>{s}</option>)}
+          </select>
+
+          <select
+            value={platform}
+            onChange={e => { setPlatform(e.target.value); setPage(1); }}
+            className="input w-auto h-9 text-xs"
+          >
+            <option value="">All Platforms</option>
+            {PLATFORMS.map(p => <option key={p}>{p}</option>)}
+          </select>
+
+          <input
+            type="date"
+            className="input w-auto h-9 text-xs"
+            value={dateFrom}
+            onChange={e => { setDateFrom(e.target.value); setPage(1); }}
+          />
+          <input
+            type="date"
+            className="input w-auto h-9 text-xs"
+            value={dateTo}
+            onChange={e => { setDateTo(e.target.value); setPage(1); }}
+          />
+        </div>
+
+        {/* Data Table */}
+        <div className="data-table-container">
+          <div className="overflow-x-auto">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>ID</th><th>Date</th><th>Product</th><th>Qty</th>
-                  <th style={{ textAlign: 'right' }}>Price</th>
-                  <th style={{ textAlign: 'right' }}>Total</th>
-                  <th style={{ textAlign: 'right' }}>Profit</th>
-                  <th style={{ textAlign: 'right' }}>Margin</th>
-                  <th>Platform</th><th>Buyer</th><th>Status</th>
-                  <th style={{ textAlign: 'center' }}>Actions</th>
+                  <th>Order Code</th>
+                  <th>Date & Time</th>
+                  <th>Product</th>
+                  <th className="text-right">Qty</th>
+                  <th className="text-right">Unit Price</th>
+                  <th className="text-right">Total</th>
+                  <th className="text-right">Profit</th>
+                  <th className="text-right">Margin</th>
+                  <th>Platform</th>
+                  <th>Buyer</th>
+                  <th>Status</th>
+                  <th className="text-center w-20">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {loading ? Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i}>{Array.from({ length: 12 }).map((_, j) => <td key={j}><div className="skeleton" style={{ height: 16, borderRadius: 4 }} /></td>)}</tr>
-                )) : transactions.length === 0 ? (
-                  <tr><td colSpan={12}>
-                    <div className="empty-state">
-                      <ShoppingCart size={36} className="empty-state-icon" />
-                      <h3>No Transactions Yet</h3>
-                      <p>Record your first sale to get started.</p>
-                      <button onClick={openAdd} className="btn btn-primary btn-sm"><Plus size={13} /> New Transaction</button>
-                    </div>
-                  </td></tr>
-                ) : transactions.map(tx => (
-                  <tr key={tx.id}>
-                    <td style={{ fontFamily: 'monospace', fontSize: 12, color: 'var(--accent)' }}>{tx.transaction_code}</td>
-                    <td className="muted" style={{ fontSize: 12, whiteSpace: 'nowrap' }}>{formatDateTime(tx.created_at)}</td>
-                    <td style={{ fontWeight: 500, maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tx.product_name}</td>
-                    <td style={{ fontWeight: 600 }}>{tx.quantity}</td>
-                    <td style={{ textAlign: 'right' }}>{formatCurrency(tx.unit_price_snapshot)}</td>
-                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{formatCurrency(tx.total)}</td>
-                    <td style={{ textAlign: 'right', color: tx.profit >= 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>{formatCurrency(tx.profit)}</td>
-                    <td style={{ textAlign: 'right', color: tx.margin >= 0 ? 'var(--success)' : 'var(--danger)' }}>{formatPercent(tx.margin)}</td>
-                    <td><span className="badge badge-inactive">{tx.platform}</span></td>
-                    <td className="muted" style={{ fontSize: 12 }}>{tx.buyer_username || '—'}</td>
-                    <td>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <span className={STATUS_BADGE[tx.status] || 'badge badge-inactive'}>{tx.status}</span>
-                        {tx.status === 'Pending' && (
-                          <button onClick={() => updateStatus(tx, 'Completed')} style={{ fontSize: 10, cursor: 'pointer', background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 4, padding: '1px 4px' }}>→ Complete</button>
-                        )}
-                        {tx.status === 'Processing' && (
-                          <button onClick={() => updateStatus(tx, 'Completed')} style={{ fontSize: 10, cursor: 'pointer', background: 'var(--success-bg)', color: 'var(--success)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 4, padding: '1px 4px' }}>→ Complete</button>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
-                        <button onClick={() => openEdit(tx)} className="btn btn-secondary btn-icon btn-sm"><Edit2 size={12} /></button>
-                        <button onClick={() => setConfirmDelete(tx)} className="btn btn-icon btn-sm btn-danger"><Trash2 size={12} /></button>
+                {loading ? (
+                  Array.from({ length: 8 }).map((_, i) => (
+                    <tr key={i}>
+                      {Array.from({ length: 12 }).map((_, j) => (
+                        <td key={j}><div className="skeleton h-4 w-full" /></td>
+                      ))}
+                    </tr>
+                  ))
+                ) : transactions.length === 0 ? (
+                  <tr>
+                    <td colSpan={12}>
+                      <div className="empty-state py-12">
+                        <ShoppingCart size={40} className="empty-state-icon" />
+                        <h3 className="font-bold text-sm">No Transactions Recorded</h3>
+                        <p className="text-xs text-[var(--text-muted)]">Record your first sale to get started.</p>
+                        <button onClick={openAdd} className="btn btn-primary btn-sm mt-2">
+                          <Plus size={14} /> New Transaction
+                        </button>
                       </div>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  transactions.map(tx => (
+                    <tr key={tx.id}>
+                      <td className="font-mono text-xs text-[var(--accent)] font-semibold">{tx.transaction_code}</td>
+                      <td className="text-xs text-[var(--text-muted)] whitespace-nowrap">{formatDateTime(tx.created_at)}</td>
+                      <td className="font-semibold text-[var(--text-primary)]">
+                        <button
+                          onClick={() => setSelectedDrawerTx(tx)}
+                          className="hover:text-[var(--accent)] hover:underline text-left"
+                        >
+                          {tx.product_name}
+                        </button>
+                      </td>
+                      <td className="text-right font-bold">{tx.quantity}</td>
+                      <td className="text-right">{formatCurrency(tx.unit_price_snapshot)}</td>
+                      <td className="text-right font-bold text-[var(--text-primary)]">{formatCurrency(tx.total)}</td>
+                      <td className={`text-right font-bold ${tx.profit >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
+                        {formatCurrency(tx.profit)}
+                      </td>
+                      <td className={`text-right ${tx.margin >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
+                        {formatPercent(tx.margin)}
+                      </td>
+                      <td><span className="badge badge-inactive">{tx.platform}</span></td>
+                      <td className="text-xs text-[var(--text-muted)]">{tx.buyer_username || '—'}</td>
+                      <td>
+                        <div className="flex flex-col gap-1 items-start">
+                          <span className={STATUS_BADGE[tx.status] || 'badge badge-inactive'}>{tx.status}</span>
+                          {(tx.status === 'Pending' || tx.status === 'Processing') && (
+                            <button
+                              onClick={() => updateStatus(tx, 'Completed')}
+                              className="text-[10px] font-semibold text-[var(--success)] hover:underline flex items-center gap-0.5"
+                            >
+                              <CheckCircle2 size={10} /> Mark Complete
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="text-center relative">
+                        <button
+                          onClick={() => setActiveMenuId(activeMenuId === tx.id ? null : tx.id)}
+                          className="btn btn-ghost btn-icon btn-sm"
+                        >
+                          <MoreVertical size={16} />
+                        </button>
+
+                        {/* Inline Action Menu */}
+                        {activeMenuId === tx.id && (
+                          <div
+                            className="absolute right-4 mt-1 w-36 rounded-lg bg-[var(--bg-card)] border border-[var(--border-subtle)] shadow-xl z-30 overflow-hidden py-1 text-left"
+                            onMouseLeave={() => setActiveMenuId(null)}
+                          >
+                            <button
+                              onClick={() => { setSelectedDrawerTx(tx); setActiveMenuId(null); }}
+                              className="w-full px-3 py-2 text-xs flex items-center gap-2 text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)]"
+                            >
+                              <Eye size={14} className="text-[var(--accent)]" /> View Drawer
+                            </button>
+                            <button
+                              onClick={() => openEdit(tx)}
+                              className="w-full px-3 py-2 text-xs flex items-center gap-2 text-[var(--text-primary)] hover:bg-[var(--bg-card-hover)]"
+                            >
+                              <Edit2 size={14} className="text-[var(--info)]" /> Edit Transaction
+                            </button>
+                            <button
+                              onClick={() => { setConfirmDelete(tx); setActiveMenuId(null); }}
+                              className="w-full px-3 py-2 text-xs flex items-center gap-2 text-[var(--danger)] hover:bg-[var(--danger-bg)]"
+                            >
+                              <Trash2 size={14} /> Delete
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
+
           {totalPages > 1 && (
-            <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{total} transactions</span>
+            <div className="px-4 py-3 border-t border-[var(--border)] flex items-center justify-between text-xs text-[var(--text-muted)] bg-[var(--bg-secondary)]">
+              <span>Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total} orders</span>
               <div className="pagination">
-                <button className="page-btn" onClick={() => setPage(p => Math.max(1, p-1))} disabled={page === 1}><ChevronLeft size={14} /></button>
-                <span style={{ padding: '0 8px', fontSize: 12, color: 'var(--text-muted)' }}>Page {page} of {totalPages}</span>
-                <button className="page-btn" onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page === totalPages}><ChevronRight size={14} /></button>
+                <button className="page-btn" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>
+                  <ChevronLeft size={14} />
+                </button>
+                <button className="page-btn" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>
+                  <ChevronRight size={14} />
+                </button>
               </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Form Modal */}
-      {showForm && (
-        <div className="modal-overlay" onClick={() => setShowForm(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
-            <div className="modal-header">
-              <h2 style={{ fontSize: 16, fontWeight: 700 }}>{editTx ? 'Edit Transaction' : 'New Transaction'}</h2>
-              <button onClick={() => setShowForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}><X size={18} /></button>
+      {/* Transaction Detail Slide-Over Drawer */}
+      {selectedDrawerTx && (
+        <div className="modal-overlay" onClick={() => setSelectedDrawerTx(null)}>
+          <div className="drawer" onClick={e => e.stopPropagation()}>
+            <div className="drawer-header">
+              <div>
+                <div className="text-xs font-mono text-[var(--accent)]">{selectedDrawerTx.transaction_code}</div>
+                <h2 className="text-lg font-bold text-[var(--text-primary)]">{selectedDrawerTx.product_name}</h2>
+              </div>
+              <button onClick={() => setSelectedDrawerTx(null)} className="btn btn-ghost btn-icon">
+                <X size={18} />
+              </button>
             </div>
-            <div className="modal-body">
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                <div className="form-group" style={{ gridColumn: '1/-1' }}>
-                  <label className="form-label">Product *</label>
-                  <select className="input" value={form.product_id} onChange={e => onProductChange(e.target.value)}>
-                    <option value="">Select product...</option>
-                    {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.product_code})</option>)}
-                  </select>
+
+            <div className="drawer-body space-y-6">
+              {/* Order Status Timeline */}
+              <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] space-y-3">
+                <div className="font-semibold text-xs text-[var(--text-muted)] uppercase tracking-wider">Order Status Timeline</div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className={STATUS_BADGE[selectedDrawerTx.status]}>{selectedDrawerTx.status}</span>
+                  <span className="text-[var(--text-muted)]">• {formatDateTime(selectedDrawerTx.created_at)}</span>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Quantity *</label>
-                  <input className="input" type="number" min="1" value={form.quantity} onChange={e => setForm({...form, quantity: e.target.value})} />
+              </div>
+
+              {/* Financial Snapshot */}
+              <div className="space-y-3">
+                <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
+                  <span className="text-[var(--text-muted)]">Quantity</span>
+                  <span className="font-bold">{selectedDrawerTx.quantity} units</span>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Platform</label>
-                  <select className="input" value={form.platform} onChange={e => setForm({...form, platform: e.target.value})}>
-                    {PLATFORMS.map(p => <option key={p}>{p}</option>)}
-                  </select>
+                <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
+                  <span className="text-[var(--text-muted)]">Unit Selling Price</span>
+                  <span>{formatCurrency(selectedDrawerTx.unit_price_snapshot)}</span>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Unit Price (Rp)</label>
-                  <input className="input" type="number" value={form.unit_price} onChange={e => setForm({...form, unit_price: e.target.value})} min="0" />
+                <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
+                  <span className="text-[var(--text-muted)]">Snapshot HPP Cost</span>
+                  <span className="text-[var(--text-secondary)]">{formatCurrency(selectedDrawerTx.hpp_snapshot)}</span>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">HPP / Unit (Rp)</label>
-                  <input className="input" type="number" value={form.hpp} onChange={e => setForm({...form, hpp: e.target.value})} min="0" />
+                <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
+                  <span className="text-[var(--text-muted)]">Total Revenue</span>
+                  <span className="font-bold text-sm text-[var(--text-primary)]">{formatCurrency(selectedDrawerTx.total)}</span>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Status</label>
-                  <select className="input" value={form.status} onChange={e => setForm({...form, status: e.target.value})}>
-                    {STATUSES.map(s => <option key={s}>{s}</option>)}
-                  </select>
+                <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
+                  <span className="text-[var(--text-muted)]">Net Profit</span>
+                  <span className="font-bold text-sm text-[var(--success)]">{formatCurrency(selectedDrawerTx.profit)}</span>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Buyer Username</label>
-                  <input className="input" value={form.buyer_username} onChange={e => setForm({...form, buyer_username: e.target.value})} placeholder="Optional" />
+                <div className="flex justify-between items-center py-2 border-b border-[var(--border)] text-xs">
+                  <span className="text-[var(--text-muted)]">Profit Margin</span>
+                  <span className="font-bold text-[var(--accent)]">{formatPercent(selectedDrawerTx.margin)}</span>
                 </div>
-                {/* Preview */}
-                <div style={{ gridColumn: '1/-1', background: 'var(--bg-secondary)', borderRadius: 8, padding: '12px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Total</div>
-                    <div style={{ fontSize: 15, fontWeight: 700 }}>{formatCurrency(calcTotal())}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Profit</div>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: calcProfit() >= 0 ? 'var(--success)' : 'var(--danger)' }}>{formatCurrency(calcProfit())}</div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Margin</div>
-                    <div style={{ fontSize: 15, fontWeight: 700 }}>
-                      {calcTotal() > 0 ? `${((calcProfit()/calcTotal())*100).toFixed(1)}%` : '0%'}
-                    </div>
-                  </div>
+              </div>
+
+              {/* Customer & Platform */}
+              <div className="p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-xs space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-muted)]">Channel / Platform:</span>
+                  <span className="font-semibold">{selectedDrawerTx.platform}</span>
                 </div>
-                <div className="form-group" style={{ gridColumn: '1/-1' }}>
-                  <label className="form-label">Notes</label>
-                  <textarea className="input" value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} rows={2} placeholder="Optional..." />
+                <div className="flex justify-between">
+                  <span className="text-[var(--text-muted)]">Buyer Username:</span>
+                  <span className="font-semibold">{selectedDrawerTx.buyer_username || 'Anonymous'}</span>
                 </div>
               </div>
             </div>
-            <div className="modal-footer">
-              <button onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>
-              <button onClick={handleSave} disabled={saving} className="btn btn-primary">
-                <Check size={14} /> {saving ? 'Saving...' : editTx ? 'Update' : 'Save Transaction'}
+
+            <div className="drawer-footer">
+              <button onClick={() => openEdit(selectedDrawerTx)} className="btn btn-primary text-xs">
+                <Edit2 size={14} /> Edit Transaction
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Confirm Delete */}
-      {confirmDelete && (
-        <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 400 }}>
+      {/* Add / Edit Transaction Modal */}
+      {showForm && (
+        <div className="modal-overlay" onClick={() => setShowForm(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 style={{ fontSize: 16, fontWeight: 700 }}>Delete Transaction?</h2>
+              <h2 className="text-base font-bold text-[var(--text-primary)]">
+                {editTx ? 'Edit Transaction Record' : 'Create New Transaction'}
+              </h2>
+              <button onClick={() => setShowForm(false)} className="btn btn-ghost btn-icon">
+                <X size={18} />
+              </button>
             </div>
-            <div className="modal-body">
-              <p style={{ color: 'var(--text-secondary)' }}>
-                This will permanently delete <strong style={{ color: 'var(--text-primary)' }}>{confirmDelete.transaction_code}</strong>.
-                {confirmDelete.status === 'Completed' && ' Stock will be returned.'}
-              </p>
+
+            <div className="modal-body space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2 form-group">
+                  <label className="form-label">Product Item *</label>
+                  <select
+                    className="input"
+                    value={form.product_id}
+                    onChange={e => onProductChange(e.target.value)}
+                  >
+                    <option value="">Select product...</option>
+                    {products.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} ({p.product_code}) — Stock: {p.current_stock ?? 0}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Quantity *</label>
+                  <input
+                    className="input"
+                    type="number"
+                    min="1"
+                    value={form.quantity}
+                    onChange={e => setForm({ ...form, quantity: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Sales Platform</label>
+                  <select
+                    className="input"
+                    value={form.platform}
+                    onChange={e => setForm({ ...form, platform: e.target.value })}
+                  >
+                    {PLATFORMS.map(p => <option key={p}>{p}</option>)}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Unit Selling Price (Rp)</label>
+                  <input
+                    className="input"
+                    type="number"
+                    value={form.unit_price}
+                    onChange={e => setForm({ ...form, unit_price: e.target.value })}
+                    min="0"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Snapshot HPP / Unit (Rp)</label>
+                  <input
+                    className="input"
+                    type="number"
+                    value={form.hpp}
+                    onChange={e => setForm({ ...form, hpp: e.target.value })}
+                    min="0"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Order Status</label>
+                  <select
+                    className="input"
+                    value={form.status}
+                    onChange={e => setForm({ ...form, status: e.target.value })}
+                  >
+                    {STATUSES.map(s => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">Buyer Username</label>
+                  <input
+                    className="input"
+                    value={form.buyer_username}
+                    onChange={e => setForm({ ...form, buyer_username: e.target.value })}
+                    placeholder="Roblox / Discord username"
+                  />
+                </div>
+
+                {/* Calculation Live Preview */}
+                <div className="col-span-2 p-3.5 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] grid grid-cols-3 gap-3">
+                  <div>
+                    <div className="text-[11px] text-[var(--text-muted)]">Subtotal</div>
+                    <div className="text-sm font-bold text-[var(--text-primary)]">{formatCurrency(calcTotal())}</div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-[var(--text-muted)]">Net Profit</div>
+                    <div className={`text-sm font-bold ${calcProfit() >= 0 ? 'text-[var(--success)]' : 'text-[var(--danger)]'}`}>
+                      {formatCurrency(calcProfit())}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[11px] text-[var(--text-muted)]">Margin</div>
+                    <div className="text-sm font-bold text-[var(--accent)]">
+                      {calcTotal() > 0 ? `${((calcProfit() / calcTotal()) * 100).toFixed(1)}%` : '0%'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-span-2 form-group">
+                  <label className="form-label">Notes & Comments</label>
+                  <textarea
+                    className="input h-16 py-2 resize-none"
+                    value={form.notes}
+                    onChange={e => setForm({ ...form, notes: e.target.value })}
+                    placeholder="Optional order notes..."
+                  />
+                </div>
+              </div>
             </div>
+
             <div className="modal-footer">
-              <button onClick={() => setConfirmDelete(null)} className="btn btn-secondary">Cancel</button>
-              <button onClick={handleDelete} className="btn btn-danger"><Trash2 size={13} /> Delete</button>
+              <button onClick={() => setShowForm(false)} className="btn btn-secondary">Cancel</button>
+              <button onClick={handleSave} disabled={saving} className="btn btn-primary">
+                <Check size={16} /> {saving ? 'Saving...' : editTx ? 'Update Transaction' : 'Record Transaction'}
+              </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
+      {confirmDelete && (
+        <div className="modal-overlay" onClick={() => setConfirmDelete(null)}>
+          <div className="modal max-w-md" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="text-base font-bold text-[var(--text-primary)]">Delete Transaction Record?</h2>
+            </div>
+            <div className="modal-body text-xs text-[var(--text-secondary)]">
+              This will permanently remove <strong className="text-[var(--text-primary)]">{confirmDelete.transaction_code}</strong>.
+            </div>
+            <div className="modal-footer">
+              <button onClick={() => setConfirmDelete(null)} className="btn btn-secondary">Cancel</button>
+              <button onClick={handleDelete} className="btn btn-danger">
+                <Trash2 size={14} /> Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
       {toast && (
         <div className="toast-container">
           <div className="toast">
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: toast.type === 'error' ? 'var(--danger)' : 'var(--success)', flexShrink: 0, marginTop: 4 }} />
-            <span style={{ fontSize: 13 }}>{toast.msg}</span>
+            <div className={`w-2.5 h-2.5 rounded-full ${toast.type === 'error' ? 'bg-[var(--danger)]' : 'bg-[var(--success)]'}`} />
+            <span className="text-xs font-medium">{toast.msg}</span>
           </div>
         </div>
       )}

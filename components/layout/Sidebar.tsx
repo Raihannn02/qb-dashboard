@@ -1,160 +1,157 @@
 'use client';
-import { useState, useEffect } from 'react';
+
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  LayoutDashboard, Package, Boxes, ArrowLeftRight, ShoppingCart, History,
-  Monitor, Users, Wallet, Receipt, TrendingUp, BarChart3, Settings,
-  ChevronLeft, ChevronRight, Sprout, X
+  LayoutDashboard,
+  Package,
+  Layers,
+  TrendingUp,
+  ShoppingCart,
+  History,
+  Smartphone,
+  Users,
+  DollarSign,
+  Receipt,
+  PieChart,
+  BarChart3,
+  Settings,
+  ChevronLeft,
+  ChevronRight,
+  ShieldCheck,
 } from 'lucide-react';
-
-const navGroups = [
-  {
-    label: 'MAIN',
-    items: [{ href: '/', label: 'Dashboard', icon: LayoutDashboard }],
-  },
-  {
-    label: 'INVENTORY',
-    items: [
-      { href: '/products', label: 'Products', icon: Package },
-      { href: '/inventory', label: 'Inventory', icon: Boxes },
-      { href: '/stock-movement', label: 'Stock Movement', icon: ArrowLeftRight },
-    ],
-  },
-  {
-    label: 'SALES',
-    items: [
-      { href: '/transactions', label: 'Transactions', icon: ShoppingCart },
-      { href: '/sales-history', label: 'Sales History', icon: History },
-    ],
-  },
-  {
-    label: 'OPERATIONS',
-    items: [
-      { href: '/rf-devices', label: 'RF Devices', icon: Monitor },
-      { href: '/accounts', label: 'Roblox Accounts', icon: Users },
-    ],
-  },
-  {
-    label: 'FINANCE',
-    items: [
-      { href: '/finance', label: 'Finance', icon: Wallet },
-      { href: '/expenses', label: 'Expenses', icon: Receipt },
-      { href: '/profit-loss', label: 'Profit & Loss', icon: TrendingUp },
-    ],
-  },
-  {
-    label: 'REPORTS',
-    items: [
-      { href: '/reports', label: 'Reports', icon: BarChart3 },
-    ],
-  },
-  {
-    label: 'SYSTEM',
-    items: [{ href: '/settings', label: 'Settings', icon: Settings }],
-  },
-];
 
 interface SidebarProps {
   collapsed: boolean;
-  setCollapsed: (v: boolean) => void;
-  mobileOpen: boolean;
-  setMobileOpen: (v: boolean) => void;
+  onToggleCollapse: () => void;
 }
 
-export default function Sidebar({ collapsed, setCollapsed, mobileOpen, setMobileOpen }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname();
 
-  const isActive = (href: string) => {
-    if (href === '/') return pathname === '/';
-    return pathname.startsWith(href);
-  };
+  const sections = [
+    {
+      title: 'OVERVIEW',
+      items: [
+        { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+      ],
+    },
+    {
+      title: 'INVENTORY',
+      items: [
+        { href: '/products', label: 'Products', icon: Package },
+        { href: '/inventory', label: 'Inventory', icon: Layers },
+        { href: '/stock-movement', label: 'Stock Movement', icon: TrendingUp },
+      ],
+    },
+    {
+      title: 'SALES',
+      items: [
+        { href: '/transactions', label: 'Transactions', icon: ShoppingCart },
+        { href: '/sales-history', label: 'Sales History', icon: History },
+      ],
+    },
+    {
+      title: 'OPERATIONS',
+      items: [
+        { href: '/rf-devices', label: 'RF Devices', icon: Smartphone },
+        { href: '/accounts', label: 'Roblox Accounts', icon: Users },
+      ],
+    },
+    {
+      title: 'FINANCE',
+      items: [
+        { href: '/finance', label: 'Finance Overview', icon: DollarSign },
+        { href: '/expenses', label: 'Expenses', icon: Receipt },
+        { href: '/profit-loss', label: 'Profit & Loss', icon: PieChart },
+      ],
+    },
+    {
+      title: 'ANALYTICS',
+      items: [
+        { href: '/reports', label: 'Reports', icon: BarChart3 },
+      ],
+    },
+    {
+      title: 'SYSTEM',
+      items: [
+        { href: '/settings', label: 'Settings', icon: Settings },
+      ],
+    },
+  ];
 
   return (
-    <>
-      {/* Mobile overlay */}
-      {mobileOpen && (
-        <div
-          className="fixed inset-0 bg-black/60 z-40 md:hidden"
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
-      <aside
-        className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}
-      >
-        {/* Logo */}
-        <div style={{
-          padding: '16px',
-          borderBottom: '1px solid var(--border)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          minHeight: 60,
-        }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: '10px',
-            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0, boxShadow: '0 4px 12px rgba(99,102,241,0.4)',
-          }}>
-            <Sprout size={18} color="white" />
+    <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+      {/* Brand Header */}
+      <div className="h-[64px] flex items-center justify-between px-4 border-b border-[var(--border)] shrink-0">
+        <div className="flex items-center gap-3 overflow-hidden">
+          <div className="w-8 h-8 rounded-lg bg-[var(--accent)] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-md shadow-indigo-500/20">
+            QB
           </div>
           {!collapsed && (
-            <div style={{ overflow: 'hidden' }}>
-              <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--text-primary)', letterSpacing: '-0.02em', lineHeight: 1.2 }}>QB DASHBOARD</div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>Grow a Garden 2</div>
+            <div className="flex flex-col">
+              <span className="font-bold text-sm text-[var(--text-primary)] leading-none tracking-tight">
+                QB DASHBOARD
+              </span>
+              <span className="text-[10px] text-[var(--text-muted)] font-medium tracking-wide uppercase mt-1">
+                Grow a Garden 2
+              </span>
             </div>
           )}
-          {/* Mobile close */}
-          <button
-            onClick={() => setMobileOpen(false)}
-            className="md:hidden"
-            style={{ marginLeft: 'auto', color: 'var(--text-muted)', cursor: 'pointer', background: 'none', border: 'none', display: 'flex' }}
-          >
-            <X size={16} />
-          </button>
         </div>
+        <button
+          onClick={onToggleCollapse}
+          className="w-7 h-7 rounded-md bg-[var(--bg-secondary)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-white flex items-center justify-center transition-colors"
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+        </button>
+      </div>
 
-        {/* Nav */}
-        <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '8px 0' }}>
-          {navGroups.map((group) => (
-            <div key={group.label}>
-              {!collapsed && (
-                <div className="sidebar-section-label">{group.label}</div>
-              )}
-              {collapsed && <div style={{ height: 8 }} />}
-              {group.items.map((item) => {
+      {/* Nav Section Links */}
+      <div className="flex-1 overflow-y-auto py-3 space-y-4">
+        {sections.map((section) => (
+          <div key={section.title} className="px-2">
+            {!collapsed && (
+              <div className="px-3 pb-1 text-[10px] font-bold text-[var(--text-muted)] tracking-wider uppercase">
+                {section.title}
+              </div>
+            )}
+            <div className="space-y-0.5">
+              {section.items.map((item) => {
                 const Icon = item.icon;
-                const active = isActive(item.href);
+                const isActive = pathname === item.href;
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={`sidebar-nav-item ${active ? 'active' : ''}`}
-                    title={collapsed ? item.label : undefined}
+                    className={`sidebar-nav-item ${isActive ? 'active' : ''} group relative`}
                   >
-                    <Icon size={16} style={{ flexShrink: 0 }} />
+                    <Icon size={18} className="shrink-0" />
                     {!collapsed && <span>{item.label}</span>}
+                    {collapsed && (
+                      <div className="tooltip-text">
+                        {item.label}
+                      </div>
+                    )}
                   </Link>
                 );
               })}
             </div>
-          ))}
-        </nav>
+          </div>
+        ))}
+      </div>
 
-        {/* Collapse toggle — desktop only */}
-        <div style={{ padding: '12px', borderTop: '1px solid var(--border)' }} className="hidden md:block">
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="sidebar-nav-item"
-            style={{ width: '100%', justifyContent: collapsed ? 'center' : 'flex-start', background: 'none' }}
-          >
-            {collapsed ? <ChevronRight size={16} /> : <><ChevronLeft size={16} /><span>Collapse</span></>}
-          </button>
+      {/* System Footer Badge */}
+      {!collapsed && (
+        <div className="p-3 border-t border-[var(--border)] bg-[var(--bg-secondary)] m-2 rounded-xl flex items-center gap-2.5">
+          <ShieldCheck size={16} className="text-[var(--success)] shrink-0" />
+          <div className="flex flex-col text-xs">
+            <span className="font-medium text-[var(--text-primary)] text-[11px]">Supabase Cloud</span>
+            <span className="text-[10px] text-[var(--text-muted)]">Connected 24/7</span>
+          </div>
         </div>
-      </aside>
-    </>
+      )}
+    </aside>
   );
 }
