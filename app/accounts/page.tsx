@@ -192,10 +192,17 @@ export default function AccountsPage() {
                         <div className="font-medium text-[var(--text-primary)] truncate max-w-[140px]">
                           {acc.username}
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <span className={STATUS_BADGE[acc.status] || 'badge badge-inactive'}>
                             {acc.status}
                           </span>
+                          <button
+                            onClick={() => setEditAcc(acc)}
+                            title="Edit Account"
+                            className="btn-action-icon"
+                          >
+                            <Edit2 size={12} />
+                          </button>
                           <ActionMenu
                             items={[
                               { label: 'Edit Account', icon: Edit2, onClick: () => setEditAcc(acc) },

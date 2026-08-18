@@ -192,10 +192,17 @@ export default function ExpensesPage() {
                         <div className="flex items-center justify-center gap-1.5">
                           <button
                             onClick={() => openEdit(e)}
-                            title="Edit Record"
-                            className="w-7 h-7 rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--accent)] flex items-center justify-center transition-all border border-[var(--border)]"
+                            title="Edit Expense Record"
+                            className="btn-action-icon"
                           >
                             <Edit2 size={13} />
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget(e)}
+                            title="Delete Expense Record"
+                            className="btn-action-icon danger"
+                          >
+                            <Trash2 size={13} />
                           </button>
                           <ActionMenu
                             items={[

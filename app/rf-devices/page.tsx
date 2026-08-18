@@ -205,12 +205,21 @@ export default function RFDevicesPage() {
                     </div>
                   </div>
 
-                  <ActionMenu
-                    items={[
-                      { label: 'Edit Device', icon: Edit2, onClick: () => openEdit(rf) },
-                      { label: 'Delete Device', icon: Trash2, variant: 'danger', onClick: () => setDeleteTarget(rf) },
-                    ]}
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => openEdit(rf)}
+                      title="Edit Device"
+                      className="btn-action-icon"
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                    <ActionMenu
+                      items={[
+                        { label: 'Edit Device', icon: Edit2, onClick: () => openEdit(rf) },
+                        { label: 'Delete Device', icon: Trash2, variant: 'danger', onClick: () => setDeleteTarget(rf) },
+                      ]}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2 text-xs">

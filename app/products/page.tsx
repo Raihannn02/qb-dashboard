@@ -312,9 +312,16 @@ export default function ProductsPage() {
                       <td className="text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
+                            onClick={() => setSelectedDrawerProduct(p)}
+                            title="View Product Details"
+                            className="btn-action-icon"
+                          >
+                            <Eye size={13} />
+                          </button>
+                          <button
                             onClick={() => openEdit(p)}
                             title="Edit Product"
-                            className="w-7 h-7 rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--accent)] flex items-center justify-center transition-all border border-[var(--border)]"
+                            className="btn-action-icon"
                           >
                             <Edit2 size={13} />
                           </button>

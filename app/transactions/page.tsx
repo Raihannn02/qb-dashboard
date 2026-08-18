@@ -322,9 +322,25 @@ export default function TransactionsPage() {
                       <td className="text-center">
                         <div className="flex items-center justify-center gap-1.5">
                           <button
+                            onClick={() => setSelectedDrawerTx(tx)}
+                            title="View Order Details"
+                            className="btn-action-icon"
+                          >
+                            <Eye size={13} />
+                          </button>
+                          {(tx.status === 'Pending' || tx.status === 'Processing') && (
+                            <button
+                              onClick={() => updateStatus(tx, 'Completed')}
+                              title="Mark Transaction Complete"
+                              className="btn-action-icon success"
+                            >
+                              <CheckCircle2 size={13} />
+                            </button>
+                          )}
+                          <button
                             onClick={() => openEdit(tx)}
                             title="Edit Order"
-                            className="w-7 h-7 rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--accent)] flex items-center justify-center transition-all border border-[var(--border)]"
+                            className="btn-action-icon"
                           >
                             <Edit2 size={13} />
                           </button>

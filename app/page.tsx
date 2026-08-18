@@ -94,13 +94,28 @@ export default function DashboardPage() {
     <DashboardLayout>
       <div className="page-content space-y-6">
         {/* Header Greeting & Date Filter */}
-        <div className="mb-6 space-y-3">
-          <div>
-            <h1 className="page-title">Good afternoon, Admin</h1>
-            <div className="page-subtitle">Here's what's happening with your Grow a Garden 2 business today.</div>
+        <div className="mb-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="page-title">Good afternoon, Admin</h1>
+              <div className="page-subtitle">Here's what's happening with your Grow a Garden 2 business today.</div>
+            </div>
+
+            {/* Top Quick Actions Bar */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <Link href="/transactions" className="btn btn-primary btn-sm">
+                <ShoppingCart size={14} /> + Record Sale
+              </Link>
+              <Link href="/products" className="btn btn-secondary btn-sm">
+                <Package size={14} /> + Add Product
+              </Link>
+              <Link href="/inventory" className="btn btn-secondary btn-sm">
+                <Boxes size={14} /> Stock Management
+              </Link>
+            </div>
           </div>
 
-          <div className="pt-2">
+          <div className="pt-1">
             <SegmentedControl
               options={DATE_FILTERS}
               selectedValue={dateFilter}
@@ -200,19 +215,28 @@ export default function DashboardPage() {
                 compact
               />
             ) : (
-              <div className="space-y-2 flex-1">
+              <div className="space-y-2.5 flex-1">
                 {visibleLowStock.map((item: any) => (
                   <div
                     key={item.product_code}
-                    className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-xs transition-colors hover:border-[var(--border-subtle)]"
+                    className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] text-xs transition-colors hover:border-[var(--accent-glow)]"
                   >
-                    <div>
-                      <div className="font-semibold text-[var(--text-primary)]">{item.name}</div>
-                      <div className="text-[10px] text-[var(--text-muted)]">{item.product_code}</div>
+                    <div className="flex-1 pr-2 min-w-0">
+                      <div className="font-bold text-[var(--text-primary)] truncate">{item.name}</div>
+                      <div className="text-[10px] text-[var(--text-muted)] font-mono">{item.product_code}</div>
                     </div>
-                    <span className={`badge ${item.current_stock === 0 ? 'badge-out-of-stock' : 'badge-low-stock'}`}>
-                      {item.current_stock === 0 ? 'Critical (0)' : `${item.current_stock} left`}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`badge ${item.current_stock === 0 ? 'badge-out-of-stock' : 'badge-low-stock'}`}>
+                        {item.current_stock === 0 ? 'Critical (0)' : `${item.current_stock} left`}
+                      </span>
+                      <Link
+                        href={`/inventory?search=${item.product_code}`}
+                        title="Restock item"
+                        className="btn btn-secondary btn-sm !h-7 !px-2 text-[11px] text-[var(--accent)]"
+                      >
+                        Restock
+                      </Link>
+                    </div>
                   </div>
                 ))}
               </div>

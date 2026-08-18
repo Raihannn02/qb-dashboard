@@ -229,28 +229,19 @@ export default function InventoryPage() {
                               setShowAdjust(item);
                               setAdjustForm({ type: 'Stock In', quantity: '', notes: '' });
                             }}
-                            title="Adjust Stock"
-                            className="w-7 h-7 rounded-lg bg-[var(--bg-secondary)] hover:bg-[var(--accent-light)] text-[var(--text-secondary)] hover:text-[var(--accent)] flex items-center justify-center transition-all border border-[var(--border)]"
+                            title="Quick Adjust Stock"
+                            className="btn btn-secondary btn-sm !h-7 !px-2.5 text-xs flex items-center gap-1 font-semibold hover:border-[var(--accent)] hover:text-[var(--accent)]"
                           >
-                            <ArrowUpDown size={13} />
+                            <ArrowUpDown size={12} />
+                            <span>Adjust</span>
                           </button>
-                          <ActionMenu
-                            items={[
-                              {
-                                label: 'Adjust Stock',
-                                icon: ArrowUpDown,
-                                onClick: () => {
-                                  setShowAdjust(item);
-                                  setAdjustForm({ type: 'Stock In', quantity: '', notes: '' });
-                                }
-                              },
-                              {
-                                label: 'Movement Logs',
-                                icon: History,
-                                onClick: () => { window.location.href = `/stock-movements?product_id=${item.id}`; }
-                              }
-                            ]}
-                          />
+                          <button
+                            onClick={() => { window.location.href = `/stock-movement?search=${item.product_code}`; }}
+                            title="View Stock Movement Logs"
+                            className="btn-action-icon"
+                          >
+                            <History size={13} />
+                          </button>
                         </div>
                       </td>
                     </tr>
